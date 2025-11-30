@@ -1,0 +1,51 @@
+<?php
+
+return [
+    'PAYMENT_METHODS' => ['Cash', 'Credit Card', 'Insurance Claim', 'Bank Transfer', 'Other'],
+    'DEFAULT_THERAPY_SESSION_TIME' => 45,
+    'GENDERS' => ['Male', 'Female', 'Other'],
+    'DIAGNOSIS_TYPE' => ['Primary', 'Secondary', 'Historical'],
+    'DIAGNOSIS_CONDITION_STATUS' => ['Active', 'Resolved', 'Chronic', 'In Remission'],
+    'THERAPY_SESSION_STATUS' => ['Scheduled', 'Completed', 'Cancelled', 'No Show', 'Rescheduled'],
+    'ERROR' => [
+        'AUTHORIZATION' => 'Opps! You do not have permission to access.',
+        'ACCOUNT_ISSUE' => 'Opps! Your account is not verified.Please check your email.',
+        'INVALID_CREDENTIAL' => 'Please provide valid credential',
+        'NOT_FOUND' => 'not found!',
+        'SOMETHING_WRONG' => 'Opps! Something went wrong.',
+        'DEACTIVATE_ACCOUNT' => 'Your Account has been deactivated by Admin.',
+    ],
+    'SUCCESS' => [
+        'UPDATE_DONE' => 'has been updated successfully.',
+        'ADD_DONE' => 'has been added successfully.',
+        'CHANGED_DONE' => 'has been changed successfully.',
+        'DELETE_DONE' => 'has been deleted successfully.',
+        'FETCH_DONE' => 'fetched successfully.',
+        'VERIFY_SEND' => 'has been created successfully.Please check your email and verify email address',
+        'VERIFY_DONE' => 'has been verified successfully.',
+        'LOGIN' => 'Login successfully.',
+        'SENT_DONE' => 'has been sent successfully.',
+        'LOGOUT_DONE' => 'Logged out successfully.',
+        'DONE' => 'has been done successfully.',
+    ],
+    'ROLES' => [
+        'ADMIN' => 'super-admin',
+        'ASSISTANT' => 'assistant',
+        'DOCTOR' => 'doctor',
+    ],
+    'APP_NAME' => 'TransportApp',
+
+    'COMPANYNAME' => env('APP_NAME', 'TransportApp'),
+    'encryptionMethod' => env('ENC_DEC_METHOD', ''),
+    'secrect' => env('ENC_DEC_SECRET', ''),
+    'STRIPE_KEY' => env('STRIPE_KEY', ''),
+    'STRIPE_SECRET' => env('STRIPE_SECRET', ''),
+    'STATUS_CODE' => [
+        'SUCCESS_STATUS' => 200,
+        'CREATED_STATUS' => 201,
+        'NO_CONTENT_STATUS' => 204,
+        'NOT_FOUND_STATUS' => 404,
+        'INTERNAL_SERVER_STATUS' => 500,
+        'UNPROCESSABLE_STATUS' => 422,
+    ],
+];
