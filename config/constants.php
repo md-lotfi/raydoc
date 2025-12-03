@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'SESSION_TYPE' => ['appointment', 'queue'],
     'PAYMENT_METHODS' => ['Cash', 'Credit Card', 'Insurance Claim', 'Bank Transfer', 'Other'],
     'DEFAULT_THERAPY_SESSION_TIME' => 45,
     'GENDERS' => ['Male', 'Female', 'Other'],
