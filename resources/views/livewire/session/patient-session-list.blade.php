@@ -54,6 +54,10 @@
                 <div class="flex-1">
                     <div class="flex items-center gap-2 mb-1">
                         <h3 class="font-bold text-lg">{{ $session->focus_area }}</h3>
+                        <span
+                            class="badge badge-xs font-semibold border-0 {{ $session->session_type === 'appointment' ? 'bg-info/10 text-info' : 'bg-purple-100 text-purple-700' }}">
+                            {{ $session->session_type === 'appointment' ? __('Appointment') : __('Walk-in') }}
+                        </span>
                         <x-mary-badge :value="__($session->status)"
                             class="text-xs font-bold
                             @if ($session->status === 'Completed')

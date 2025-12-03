@@ -102,6 +102,7 @@ class Schedule extends Component
         $sessions = TherapySession::query()
             ->with(['patient', 'user'])
             ->whereBetween('scheduled_at', [$startOfWeek, $endOfWeek])
+            ->where('session_type', 'appointment')
             ->orderBy('scheduled_at')
             ->get();
 

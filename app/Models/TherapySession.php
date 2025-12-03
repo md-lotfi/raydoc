@@ -10,10 +10,12 @@ class TherapySession extends Model
     protected $fillable = [
         'user_id',
         'patient_id',
+        'session_type',
         'scheduled_at',
         'duration_minutes',
         'actual_start_at',
         'actual_end_at',
+        'checked_in_at',
         'focus_area',
         'notes',
         'homework_assigned',
@@ -29,6 +31,7 @@ class TherapySession extends Model
         'duration_minutes' => 'integer',
         'actual_start_at' => 'datetime',
         'actual_end_at' => 'datetime',
+        'checked_in_at' => 'datetime',
         'cancelled_at' => 'datetime',
         'metadata' => 'array',
     ];

@@ -151,17 +151,33 @@
         {{-- ⚙️ TAB 5: SYSTEM --}}
         <x-mary-tab name="system" label="{{ __('System') }}" icon="o-cog-6-tooth">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+
+
+                {{-- Scheduling --}}
                 <x-mary-card title="{{ __('Scheduling Logic') }}" shadow>
+
+                    {{-- ✅ NEW: Default Operation Mode --}}
+                    <div class="mb-6 border-b border-base-200 pb-6">
+                        <x-mary-select label="{{ __('Default Booking Mode') }}" wire:model="default_session_type"
+                            :options="[
+                                ['id' => 'appointment', 'name' => __('Scheduled Appointments')],
+                                ['id' => 'queue', 'name' => __('Walk-in / Queue')],
+                            ]" icon="o-queue-list"
+                            hint="{{ __('Which mode should be selected by default when creating a new session?') }}" />
+                    </div>
+
                     <div class="grid grid-cols-2 gap-4">
                         <x-mary-input label="{{ __('Day Start') }}" type="time"
                             wire:model="working_hours_start" />
                         <x-mary-input label="{{ __('Day End') }}" type="time" wire:model="working_hours_end" />
                     </div>
+
                     <div class="mt-4">
                         <x-mary-range label="{{ __('Appointment Buffer (min)') }}"
                             wire:model="appointment_buffer_minutes" min="0" max="60" step="5"
                             hint="{{ $appointment_buffer_minutes . ' minutes between sessions' }}" />
                     </div>
+
                 </x-mary-card>
 
                 <x-mary-card title="{{ __('Regional') }}" shadow>

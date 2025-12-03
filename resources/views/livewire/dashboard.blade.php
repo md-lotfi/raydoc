@@ -19,7 +19,9 @@
             tooltip="{{ __('Total active patients.') }}" />
 
         {{-- Sessions --}}
-        <x-mary-stat title="{{ __('Sessions') }}" description="{{ __('This Month') }}" value="{{ $sessionsThisMonth }}"
+
+        <x-mary-stat title="{{ __('Sessions') }}" {{-- Show Walk-in Ratio --}}
+            description="{{ __('Walk-ins') }}: {{ $walkInsThisMonth }}" value="{{ $sessionsThisMonth }}"
             icon="o-calendar-days"
             class="bg-base-100 shadow-md border border-base-200 hover:-translate-y-1 transition-all duration-300"
             color="text-info" />

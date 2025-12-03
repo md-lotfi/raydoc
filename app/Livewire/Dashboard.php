@@ -8,6 +8,7 @@ use App\Models\Payment;
 use App\Models\TherapySession;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Livewire\Component;
 
 class Dashboard extends Component
@@ -16,6 +17,8 @@ class Dashboard extends Component
     public $totalPatients;
 
     public $sessionsThisMonth;
+
+    public $walkInsThisMonth;
 
     public $pendingInvoicesCount;
 
@@ -46,8 +49,13 @@ class Dashboard extends Component
             ->whereYear('scheduled_at', $currentYear)
             ->count();
 
-        // ✅ NEW CALCULATION: Absent Patients (No Show Sessions) this Month
-        // We count the number of sessions marked 'No Show' this month.
+        $this->walkInsThisMonth = TherapySession::whereMonth('scheduled_at', $currentMonth)
+            ->whereYear('scheduled_at', $currentYear)
+            ->where('session_type', 'queue')
+            ->count();
+
+        Log::debug('walkInsThisMonth count '.$this->walkInsThisMonth);
+
         $this->absentPatientsThisMonth = TherapySession::where('status', 'No Show')
             ->whereMonth('scheduled_at', $currentMonth)
             ->whereYear('scheduled_at', $currentYear)

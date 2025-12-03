@@ -80,6 +80,8 @@ class AppSettings extends Component
 
     public $appointment_buffer_minutes;
 
+    public $default_session_type;
+
     // Options
     public $availableCurrencies;
 
@@ -160,6 +162,8 @@ class AppSettings extends Component
         $this->working_hours_end = $meta['system']['working_hours_end'] ?? '17:00';
         $this->appointment_buffer_minutes = $meta['system']['appointment_buffer'] ?? 15;
 
+        $this->default_session_type = $meta['system']['default_session_type'] ?? config('constants.SESSION_TYPE')[0];
+
         $this->availableCurrencies = Currency::all();
     }
 
@@ -199,6 +203,7 @@ class AppSettings extends Component
                 'working_hours_start' => $this->working_hours_start,
                 'working_hours_end' => $this->working_hours_end,
                 'appointment_buffer' => $this->appointment_buffer_minutes,
+                'default_session_type' => $this->default_session_type,
             ],
         ];
 

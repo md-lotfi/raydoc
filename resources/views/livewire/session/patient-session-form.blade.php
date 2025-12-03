@@ -16,42 +16,70 @@
         <div class="lg:col-span-1 space-y-6">
             <x-mary-card title="{{ __('Appointment Details') }}" shadow separator class="relative overflow-hidden">
 
+                {{-- Session Type Switcher --}}
+                <div class="flex bg-base-200 p-1 rounded-lg mb-4">
+                    <button type="button"
+                        class="flex-1 btn btn-sm {{ $session_type === 'appointment' ? 'btn-white shadow-sm text-primary' : 'btn-ghost' }}"
+                        wire:click="$set('session_type', 'appointment')">
+                        {{ __('Appointment') }}
+                    </button>
+                    <button type="button"
+                        class="flex-1 btn btn-sm {{ $session_type === 'queue' ? 'btn-white shadow-sm text-primary' : 'btn-ghost' }}"
+                        wire:click="$set('session_type', 'queue')">
+                        {{ __('Walk-in / Queue') }}
+                    </button>
+                </div>
+
                 {{-- Decorative bg --}}
                 <div class="absolute top-0 right-0 w-20 h-20 bg-primary/10 rounded-bl-full -mr-4 -mt-4"></div>
 
                 <div class="space-y-4">
 
-                    {{-- Date & Time --}}
+                    {{-- Date --}}
                     <x-mary-datepicker label="{{ __('Date') }}" wire:model="session_date" icon="o-calendar" />
-                    <x-mary-input label="{{ __('Time') }}" type="time" wire:model="start_time" icon="o-clock" />
 
-                    {{-- Duration Presets --}}
-                    <div>
-                        <label class="label">
-                            <span class="label-text font-semibold">{{ __('Duration') }}</span>
-                        </label>
-                        <div class="join w-full mb-2">
-                            <button type="button"
-                                class="join-item btn btn-sm flex-1 {{ $duration_minutes == 30 ? 'btn-primary' : 'btn-ghost bg-base-200' }}"
-                                wire:click="setDuration(30)">30{{ __('m') }}</button>
-                            <button type="button"
-                                class="join-item btn btn-sm flex-1 {{ $duration_minutes == 45 ? 'btn-primary' : 'btn-ghost bg-base-200' }}"
-                                wire:click="setDuration(45)">45{{ __('m') }}</button>
-                            <button type="button"
-                                class="join-item btn btn-sm flex-1 {{ $duration_minutes == 60 ? 'btn-primary' : 'btn-ghost bg-base-200' }}"
-                                wire:click="setDuration(60)">60{{ __('m') }}</button>
+                    {{-- Time & Duration: Only visible for Scheduled Appointments --}}
+                    @if ($session_type === 'appointment')
+                        <x-mary-input label="{{ __('Time') }}" type="time" wire:model="start_time"
+                            icon="o-clock" />
+
+                        {{-- Duration Presets --}}
+                        <div>
+                            <label class="label">
+                                <span class="label-text font-semibold">{{ __('Duration') }}</span>
+                            </label>
+                            <div class="join w-full mb-2">
+                                <button type="button"
+                                    class="join-item btn btn-sm flex-1 {{ $duration_minutes == 30 ? 'btn-primary' : 'btn-ghost bg-base-200' }}"
+                                    wire:click="setDuration(30)">30{{ __('m') }}</button>
+                                <button type="button"
+                                    class="join-item btn btn-sm flex-1 {{ $duration_minutes == 45 ? 'btn-primary' : 'btn-ghost bg-base-200' }}"
+                                    wire:click="setDuration(45)">45{{ __('m') }}</button>
+                                <button type="button"
+                                    class="join-item btn btn-sm flex-1 {{ $duration_minutes == 60 ? 'btn-primary' : 'btn-ghost bg-base-200' }}"
+                                    wire:click="setDuration(60)">60{{ __('m') }}</button>
+                            </div>
+                            <x-mary-input wire:model="duration_minutes" type="number" suffix="{{ __('min') }}"
+                                min="15" max="180" class="text-center font-mono" />
                         </div>
-                        <x-mary-input wire:model="duration_minutes" type="number" suffix="{{ __('min') }}"
-                            min="15" max="180" class="text-center font-mono" />
-                    </div>
+
+                        {{-- Recurring Toggle --}}
+                        <x-mary-checkbox label="{{ __('Repeat Weekly') }}" wire:model="is_recurring"
+                            hint="{{ __('Create this appointment for the next 4 weeks') }}" />
+                    @else
+                        {{-- Info box for Queue Mode --}}
+                        <div class="alert alert-info text-sm flex items-start">
+                            <x-mary-icon name="o-information-circle" class="w-5 h-5 shrink-0" />
+                            <div>
+                                <span class="font-bold block">{{ __('Walk-in Mode') }}</span>
+                                <span>{{ __('Patient will be added to the Waiting Room immediately. Duration will be tracked automatically upon check-in.') }}</span>
+                            </div>
+                        </div>
+                    @endif
 
                     {{-- Therapist --}}
                     <x-mary-select label="{{ __('Therapist') }}" :options="$availableTherapists" wire:model="therapist_user_id"
                         icon="o-user-circle" />
-
-                    {{-- Recurring Toggle (Visual Only for now) --}}
-                    <x-mary-checkbox label="{{ __('Repeat Weekly') }}" wire:model="is_recurring"
-                        hint="{{ __('Create this appointment for the next 4 weeks') }}" />
 
                 </div>
             </x-mary-card>

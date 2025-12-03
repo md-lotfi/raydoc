@@ -102,12 +102,17 @@
                     </div>
 
                     {{-- Status Actions --}}
-                    @if ($session->status === 'Scheduled')
+                    @if (in_array($session->status, ['Scheduled', 'Checked In', 'In Session']))
                         <div class="grid grid-cols-2 gap-2 mt-6">
                             <x-mary-button label="{{ __('Complete') }}" class="btn-success btn-sm text-white"
                                 wire:click="markAsCompleted" />
-                            <x-mary-button label="{{ __('No Show') }}" class="btn-warning btn-sm"
-                                wire:click="$set('newStatus', 'No Show')" />
+
+                            {{-- Only show "No Show" if they haven't started yet --}}
+                            @if ($session->status !== 'In Session')
+                                <x-mary-button label="{{ __('No Show') }}" class="btn-warning btn-sm"
+                                    wire:click="$set('newStatus', 'No Show')" />
+                            @endif
+
                             <x-mary-button label="{{ __('Cancel') }}" class="btn-error btn-outline btn-sm col-span-2"
                                 wire:click="$set('showCancelModal', true)" />
                         </div>
@@ -118,6 +123,15 @@
             {{-- Metadata List --}}
             <x-mary-card title="{{ __('Session Details') }}" separator shadow>
                 <div class="space-y-4 text-sm">
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-500">{{ __('Type') }}</span>
+                        <span class="font-medium flex items-center gap-1">
+                            <x-mary-icon
+                                name="{{ $session->session_type === 'appointment' ? 'o-calendar' : 'o-user' }}"
+                                class="w-4 h-4 text-gray-400" />
+                            {{ $session->session_type === 'appointment' ? __('Appointment') : __('Walk-in') }}
+                        </span>
+                    </div>
                     <div class="flex justify-between">
                         <span class="text-gray-500">{{ __('Therapist') }}</span>
                         <span class="font-medium">{{ $session->user->name }}</span>
@@ -162,7 +176,7 @@
     {{-- 🚫 Modal --}}
     <x-mary-modal wire:model="showCancelModal" title="{{ __('Cancel Session') }}" class="backdrop-blur">
         <div class="mb-4 text-gray-600">
-            {{ __('Please provide a reason for cancelling. This will be recorded in the patient\'s history.') }}</div>
+            {{ __("Please provide a reason for cancelling. This will be recorded in the patient's history.") }}</div>
         <x-mary-textarea wire:model="cancellationReason" placeholder="{{ __('Reason...') }}" rows="3" />
         <x-slot:actions>
             <x-mary-button label="{{ __('Keep Session') }}" @click="$wire.showCancelModal = false" />

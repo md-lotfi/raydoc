@@ -19,6 +19,8 @@ class PatientSessionForm extends Component
     public Patient $patient;
 
     // Scheduling
+    public $session_type = 'appointment'; // 'appointment' or 'queue'
+
     public $session_date;
 
     public $start_time = '09:00';
@@ -49,6 +51,7 @@ class PatientSessionForm extends Component
 
         if ($session) {
             // 🟦 EDIT MODE
+            $this->session_type = $session->session_type;
             $this->session_date = $session->scheduled_at->format('Y-m-d');
             $this->start_time = $session->scheduled_at->format('H:i');
             $this->duration_minutes = $session->duration_minutes;
@@ -58,6 +61,7 @@ class PatientSessionForm extends Component
             $this->homework_assigned = $session->homework_assigned;
         } else {
             // 🟩 CREATE MODE
+            $this->session_type = settings()->metadata['system']['default_session_type'] ?? 'appointment';
             $this->session_date = now()->format('Y-m-d');
             $this->therapist_user_id = Auth::id(); // Default to current user if they are a therapist
         }
@@ -66,6 +70,7 @@ class PatientSessionForm extends Component
     protected function rules()
     {
         return [
+            'session_type' => 'required|in:'.implode(',', config('constants.SESSION_TYPE')),
             'session_date' => 'required|date|after_or_equal:today',
             'start_time' => 'required',
             'duration_minutes' => 'required|integer|min:15|max:180',
@@ -85,19 +90,38 @@ class PatientSessionForm extends Component
     {
         $this->validate();
 
-        $scheduledDateTime = Carbon::createFromFormat('Y-m-d H:i', "$this->session_date $this->start_time");
+        if ($this->session_type === 'queue') {
+            $existingAppointment = TherapySession::where('patient_id', $this->patient->id)
+                ->whereDate('scheduled_at', $this->session_date)
+                ->where('session_type', 'appointment')
+                ->exists();
+
+            if ($existingAppointment) {
+                $this->warning(__('Duplicate Visit'), __('This patient already has a scheduled appointment today.'));
+                // You can choose to return here or just warn and proceed
+            }
+        }
+
+        // For Queue, default time to NOW (arrival time)
+        $timeString = ($this->session_type === 'queue') ? now()->format('H:i') : $this->start_time;
+        $scheduledDateTime = Carbon::createFromFormat('Y-m-d H:i', "$this->session_date $timeString");
 
         $data = [
             'patient_id' => $this->patient->id,
             'user_id' => $this->therapist_user_id,
+            'session_type' => $this->session_type,
             'scheduled_at' => $scheduledDateTime,
             'duration_minutes' => $this->duration_minutes,
             'focus_area' => $this->focus_area,
             'notes' => $this->notes,
             'homework_assigned' => $this->homework_assigned,
-            'status' => $this->session->status ?? 'Scheduled',
+            'status' => $this->session->status ?? ($this->session_type === 'queue' ? 'Checked In' : 'Scheduled'),
             'billing_status' => $this->session->billing_status ?? 'Pending',
         ];
+
+        if ($this->session_type === 'queue' && ! isset($this->session)) {
+            $data['checked_in_at'] = now();
+        }
 
         if ($this->session) {
             $this->session->update($data);
@@ -108,6 +132,10 @@ class PatientSessionForm extends Component
         }
 
         $this->success(__('Success'), $message);
+
+        /*if ($this->session_type === 'appointment' && settings()->shouldNotify('patient_booking')) {
+    // Send Email
+}*/
 
         return redirect()->route('patient.session.list', ['patient' => $this->patient->id]);
     }
