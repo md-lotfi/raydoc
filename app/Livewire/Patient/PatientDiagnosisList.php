@@ -6,97 +6,116 @@ use App\Models\Diagnosis;
 use App\Models\Patient;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Livewire\Attributes\Computed;
+use Illuminate\Database\Eloquent\Builder;
 use Mary\Traits\Toast;
 
 class PatientDiagnosisList extends Component
 {
     use Toast, WithPagination;
 
-    public $patient;
+    public Patient $patient;
 
-    public $diagnosisToDeleteId;
-
-    public $showDeleteModal;
-
+    // --- Filters & Sort ---
     public string $search = '';
+    public string $statusFilter = ''; // '' = All, 'Active', 'Resolved', etc.
+    public string $typeFilter = '';   // '' = All, 'Primary', 'Secondary'
+    public array $sortBy = ['column' => 'start_date', 'direction' => 'desc'];
 
-    public function updatingSearch()
+    // --- Delete State ---
+    public $diagnosisToDeleteId;
+    public $showDeleteModal = false;
+
+    // --- Options (from constants) ---
+    public $diagnosisTypes;
+    public $conditionStatuses;
+
+    public function mount(Patient $patient)
     {
-        $this->resetPage();
+        $this->patient = $patient;
+        $this->diagnosisTypes = config('constants.DIAGNOSIS_TYPE');
+        $this->conditionStatuses = config('constants.DIAGNOSIS_CONDITION_STATUS');
     }
 
-    public function confirmDelete($userId)
+    // --- Headers ---
+    public function headers(): array
     {
-        $this->diagnosisToDeleteId = $userId;
+        return [
+            ['key' => 'icdCode.code', 'label' => __('ICD Code'), 'class' => 'font-mono font-bold w-24'],
+            ['key' => 'icdCode.description', 'label' => __('Diagnosis'), 'class' => 'w-1/3'],
+            ['key' => 'type', 'label' => __('Type'), 'class' => 'text-center'],
+            ['key' => 'condition_status', 'label' => __('Status'), 'class' => 'text-center'],
+            ['key' => 'start_date', 'label' => __('Onset Date'), 'class' => 'hidden md:table-cell'],
+            ['key' => 'user.name', 'label' => __('Physician'), 'class' => 'hidden lg:table-cell text-xs'],
+            ['key' => 'actions', 'label' => '', 'sortable' => false],
+        ];
+    }
+
+    // --- Actions ---
+
+    public function sort($column)
+    {
+        if ($this->sortBy['column'] === $column) {
+            $this->sortBy['direction'] = $this->sortBy['direction'] === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->sortBy['column'] = $column;
+            $this->sortBy['direction'] = 'asc';
+        }
+    }
+
+    public function confirmDelete($id)
+    {
+        $this->diagnosisToDeleteId = $id;
         $this->showDeleteModal = true;
     }
 
     public function delete()
     {
-        if (is_null($this->diagnosisToDeleteId)) {
-            // Should not happen, but a safeguard
-            $this->error(
-                title: 'No diagnosis selected.',
-                description: 'Please select a diagnosis before deleting',                  // optional (text)
-
-                timeout: 3000,                      // optional (ms)
-                redirectTo: null                    // optional (uri)
-            );
-
-            return;
+        if ($this->diagnosisToDeleteId) {
+            $diagnosis = Diagnosis::find($this->diagnosisToDeleteId);
+            $diagnosis?->delete();
+            $this->success(__('Deleted'), __('Diagnosis record removed.'));
         }
-
-        $patient = Diagnosis::find($this->diagnosisToDeleteId);
-
-        if (! $patient) {
-            $this->error(
-                title: 'No patient selected.',
-                description: 'Please select a patient before deleting',                  // optional (text)
-
-                timeout: 3000,                      // optional (ms)
-                redirectTo: null                    // optional (uri)
-            );
-            // Close the modal and clear the ID
-            $this->showDeleteModal = false;
-            $this->diagnosisToDeleteId = null;
-
-            return;
-        }
-        $patient->delete();
-
-        // 3. Close modal, reset state, and notify
+        
         $this->showDeleteModal = false;
         $this->diagnosisToDeleteId = null;
-
-        $this->success(
-            title: 'Patient saved.',
-            description: 'Diagnosis deleted successfully!',                  // optional (text)
-            timeout: 3000,                      // optional (ms)
-            redirectTo: null                    // optional (uri)
-        );
-
-        $this->resetPage();
     }
 
-    public function mount(Patient $patient)
+    // --- Computed Data ---
+
+    #[Computed]
+    public function diagnoses()
     {
-        $this->patient = $patient;
+        return Diagnosis::query()
+            ->where('patient_id', $this->patient->id)
+            ->with(['icdCode', 'user'])
+            ->when($this->search, function (Builder $q) {
+                $q->whereHas('icdCode', function ($i) {
+                    $i->where('code', 'like', "%$this->search%")
+                      ->orWhere('description', 'like', "%$this->search%");
+                })->orWhere('description', 'like', "%$this->search%");
+            })
+            ->when($this->statusFilter, fn($q) => $q->where('condition_status', $this->statusFilter))
+            ->when($this->typeFilter, fn($q) => $q->where('type', $this->typeFilter))
+            ->orderBy($this->sortBy['column'], $this->sortBy['direction'])
+            ->paginate(10);
+    }
+
+    #[Computed]
+    public function stats()
+    {
+        // Efficiently count without loading all models
+        $base = Diagnosis::where('patient_id', $this->patient->id);
+        
+        return [
+            'total' => (clone $base)->count(),
+            'active' => (clone $base)->where('condition_status', 'Active')->count(),
+            'primary' => (clone $base)->where('type', 'Primary')->count(),
+        ];
     }
 
     public function render()
     {
-        $query = Diagnosis::query()->where('patient_id', $this->patient->id);
-        if ($this->search) {
-            $query->where(function ($q) {
-                $q->where('id', 'like', '%'.$this->search.'%')
-                    ->orWhere('description', 'like', '%'.$this->search.'%')
-                    ->orWhere('condition_status', 'like', '%'.$this->search.'%')
-                    ->orWhere('type', 'like', '%'.$this->search.'%');
-            });
-        }
-
-        $diagnoses = $query->paginate(5);
-
-        return view('livewire.diagnosis.patient-diagnosis-list', compact('diagnoses'));
+        return view('livewire.diagnosis.patient-diagnosis-list');
     }
 }

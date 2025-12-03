@@ -5,6 +5,7 @@ use App\Livewire\Assistant\AssistantsList;
 use App\Livewire\Billing\BillingCodesForm;
 use App\Livewire\Billing\BillingCodesList;
 use App\Livewire\Dashboard;
+use App\Livewire\Diagnosis\GlobalDiagnosesList;
 use App\Livewire\Doctor\DoctorForm;
 use App\Livewire\Doctor\DoctorsList;
 use App\Livewire\Invoices\EditInvoice;
@@ -23,6 +24,7 @@ use App\Livewire\ReportDashboard;
 use App\Livewire\Sessions\Schedule;
 use App\Livewire\Sessions\SessionDetail;
 use App\Livewire\Sessions\SessionsList;
+use App\Livewire\Sessions\WaitingRoom;
 use App\Livewire\Settings\AppSettings;
 use App\Livewire\Settings\CurrencyForm;
 use App\Livewire\Settings\CurrencyList;
@@ -34,9 +36,13 @@ Route::get('/', function () {
     return view('welcome');
 })->name('home');
 
-/*Route::view('dashboard', 'dashboard')
-    ->middleware(['auth', 'verified'])
-    ->name('dashboard');*/
+Route::get('lang/{locale}', function ($locale) {
+    if (in_array($locale, ['en', 'fr', 'ar'])) {
+        session(['locale' => $locale]);
+    }
+
+    return redirect()->back();
+})->name('switch-language');
 
 Route::middleware(['auth'])->group(function () {
     Route::prefix('dashboard')->group(function () {
@@ -117,21 +123,26 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('sessions')->group(function () {
         Route::get('schedule', Schedule::class)->name('sessions.schedule');
         Route::get('list', SessionsList::class)->name('sessions.list');
+        Route::get('waiting-room', WaitingRoom::class)->name('sessions.waiting-room');
         Route::get('/{session}/detail', SessionDetail::class)->name('sessions.detail');
     });
 
     Route::prefix('doctors')->group(function () {
         Route::get('create', DoctorForm::class)->name('doctors.create');
         Route::get('list', DoctorsList::class)->name('doctors.list');
-        Route::get('/{doctor}/detail', SessionDetail::class)->name('doctors.detail');
-        Route::get('/{doctor}/edit', SessionDetail::class)->name('doctors.edit');
+        Route::get('/{doctor}/detail', DoctorForm::class)->name('doctors.detail');
+        Route::get('/{doctor}/edit', DoctorForm::class)->name('doctors.edit');
     });
 
     Route::prefix('assistants')->group(function () {
         Route::get('create', AssistantForm::class)->name('assistants.create');
         Route::get('list', AssistantsList::class)->name('assistants.list');
-        Route::get('/{assistant}/detail', SessionDetail::class)->name('assistants.detail');
-        Route::get('/{assistant}/edit', SessionDetail::class)->name('assistants.edit');
+        Route::get('/{assistant}/detail', AssistantForm::class)->name('assistants.detail');
+        Route::get('/{assistant}/edit', AssistantForm::class)->name('assistants.edit');
+    });
+
+    Route::prefix('clinical')->group(function () {
+        Route::get('diagnoses', GlobalDiagnosesList::class)->name('clinical.diagnoses.list');
     });
 
 });

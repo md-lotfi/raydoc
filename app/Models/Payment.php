@@ -44,4 +44,9 @@ class Payment extends Model
         // invoice_id is nullable because some payments (e.g., retainer) might not be tied to a specific invoice immediately
         return $this->belongsTo(Invoice::class);
     }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
 }

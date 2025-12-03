@@ -6,38 +6,46 @@ use App\Models\TherapySession;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
+use Mary\Traits\Toast;
 
 class SessionDetail extends Component
 {
+    use Toast;
+
     public TherapySession $session;
 
-    // Properties for editing/updating status
-    public $newStatus;
+    // Navigation
+    public ?TherapySession $previousSession = null;
+    public ?TherapySession $nextSession = null;
 
-    public $cancellationReason;
-
+    // Editable Properties
     public $actualStartAt;
-
     public $actualEndAt;
-
     public $notes;
-
     public $homeworkAssigned;
-
-    // Flag for displaying the cancellation modal
+    
+    // Cancellation
     public $showCancelModal = false;
+    public $cancellationReason;
 
     public function mount(TherapySession $session)
     {
-        // Eager load necessary relationships for display
         $this->session = $session->load(['patient', 'user']);
+        
+        // Load navigation links
+        $this->previousSession = TherapySession::where('patient_id', $this->session->patient_id)
+            ->where('scheduled_at', '<', $this->session->scheduled_at)
+            ->orderByDesc('scheduled_at')
+            ->first();
 
-        // Initialize editable properties
-        $this->newStatus = $session->status;
+        $this->nextSession = TherapySession::where('patient_id', $this->session->patient_id)
+            ->where('scheduled_at', '>', $this->session->scheduled_at)
+            ->orderBy('scheduled_at')
+            ->first();
+
+        // Initialize Form
         $this->notes = $session->notes;
         $this->homeworkAssigned = $session->homework_assigned;
-
-        // Format dates for input fields
         $this->actualStartAt = $session->actual_start_at ? $session->actual_start_at->format('Y-m-d\TH:i') : null;
         $this->actualEndAt = $session->actual_end_at ? $session->actual_end_at->format('Y-m-d\TH:i') : null;
     }
@@ -52,8 +60,6 @@ class SessionDetail extends Component
         ];
     }
 
-    // --- Actions ---
-
     public function updateClinicalDetails()
     {
         $this->validate();
@@ -65,12 +71,11 @@ class SessionDetail extends Component
             'actual_end_at' => $this->actualEndAt,
         ]);
 
-        session()->flash('success', 'Clinical details updated successfully.');
+        $this->success(__('Saved'), __('Clinical details updated successfully.'));
     }
 
     public function markAsCompleted()
     {
-        // Validation: Ensure actual times are set before marking as completed
         $this->validate([
             'actualStartAt' => 'required',
             'actualEndAt' => 'required|after_or_equal:actualStartAt',
@@ -78,41 +83,33 @@ class SessionDetail extends Component
 
         $this->session->update([
             'status' => 'Completed',
-            'billing_status' => 'Pending', // Ready to be billed
+            'billing_status' => 'Pending',
             'actual_start_at' => $this->actualStartAt,
             'actual_end_at' => $this->actualEndAt,
         ]);
 
-        session()->flash('success', 'Session marked as **Completed** and is now pending billing.');
-    }
-
-    public function openCancelModal()
-    {
-        $this->showCancelModal = true;
+        $this->success(__('Completed'), __('Session marked as completed.'));
     }
 
     public function cancelSession()
     {
-        $this->validate([
-            'cancellationReason' => 'required|string|min:10',
-        ]);
+        $this->validate(['cancellationReason' => 'required|string|min:5']);
 
         try {
             DB::transaction(function () {
                 $this->session->update([
                     'status' => 'Cancelled',
-                    'billing_status' => 'Not Applicable', // Not billable
+                    'billing_status' => 'Not Applicable',
                     'cancelled_at' => Carbon::now(),
                     'cancellation_reason' => $this->cancellationReason,
                 ]);
             });
 
             $this->showCancelModal = false;
-            session()->flash('warning', 'Session has been successfully **Cancelled**.');
-            $this->session->refresh();
-
+            $this->warning(__('Cancelled'), __('Session has been cancelled.'));
+            
         } catch (\Exception $e) {
-            session()->flash('error', 'Failed to cancel session: '.$e->getMessage());
+            $this->error(__('Error'), $e->getMessage());
         }
     }
 

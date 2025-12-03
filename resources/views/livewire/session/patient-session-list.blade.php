@@ -1,223 +1,170 @@
-@php
-    $headers = [
-        ['key' => 'id', 'label' => '#'],
-        [
-            'key' => 'scheduled_at',
-            'label' => 'Scheduled Date',
-            'sortable' => true,
-            // Format to show only the date part of the timestamp
-            'format' => fn($row, $field) => date('Y-m-d', strtotime($field)),
-        ],
-        [
-            'key' => 'scheduled_at',
-            'label' => 'Time',
-            'sortable' => false,
-            // Format to show only the time part of the timestamp
-            'format' => fn($row, $field) => date('H:i', strtotime($field)),
-        ],
-        [
-            'key' => 'duration_minutes',
-            'label' => 'Duration',
-            'sortable' => true,
-            'format' => fn($row, $field) => "{$field} min",
-        ],
-        [
-            'key' => 'user.name',
-            'label' => 'Therapist',
-            'sortable' => false, // Assuming searching/sorting by therapist name happens via Livewire query
-        ],
-        [
-            'key' => 'focus_area',
-            'label' => 'Focus Area',
-            'sortable' => false, // Assuming this is descriptive text
-        ],
-        [
-            'key' => 'status',
-            'label' => 'Session Status',
-        ],
-        [
-            'key' => 'billing_status',
-            'label' => 'Billing Status',
-        ],
-    ];
-@endphp
-<div class="p-4">
-    <x-page-header :title="__('Therapy Sessions')" :subtitle="$patient->first_name . ' ' . $patient->last_name" />
+<div class="space-y-6">
 
-    <div>
-        <x-custom-search model="search" placeholder="{{ __('Search sessions...') }}">
-            <x-slot:actions>
-                <a href="{{ route('patient.session.create', ['patient' => $patient->id]) }}">
-                    <x-mary-button icon="o-calendar-days" label="Schedule Session" class="btn-primary" />
-                </a>
-                <a href="{{ route('invoice.generate', ['patient' => $patient->id]) }}">
-                    <x-mary-button icon="s-banknotes" label="Generate invoice" class="btn-success" />
-                </a>
-                <x-mary-button icon="o-document-arrow-down" label="Export to PDF" wire:click="exportPdf"
-                    class="btn-secondary" />
-                <x-mary-button icon="o-funnel" label="Filter" wire:click="toggleFilter" class="btn-ghost" />
-            </x-slot:actions>
-        </x-custom-search>
+    {{-- 🟢 HEADER --}}
+    <x-page-header title="{{ __('Therapy Sessions') }}"
+        subtitle="{{ __('History for') }} {{ $patient->first_name }} {{ $patient->last_name }}" separator>
+        <x-slot:actions>
+            <x-mary-button label="{{ __('New Session') }}" icon="o-calendar" class="btn-primary"
+                link="{{ route('patient.session.create', $patient->id) }}" />
+        </x-slot:actions>
+    </x-page-header>
+
+    {{-- 🎛️ CONTROLS --}}
+    <div
+        class="flex flex-col md:flex-row gap-4 justify-between items-center bg-base-100 p-4 rounded-xl shadow-sm border border-base-200">
+
+        <div class="w-full md:w-1/3">
+            <x-mary-input icon="o-magnifying-glass" placeholder="{{ __('Search focus area...') }}"
+                wire:model.live.debounce.300ms="search" />
+        </div>
+
+        <div class="flex gap-2 w-full md:w-auto overflow-x-auto">
+            <div class="join">
+                <button class="join-item btn btn-sm {{ $statusFilter === '' ? 'btn-neutral' : 'btn-ghost' }}"
+                    wire:click="$set('statusFilter', '')">{{ __('All') }}</button>
+                <button
+                    class="join-item btn btn-sm {{ $statusFilter === 'Scheduled' ? 'btn-active btn-info text-white' : 'btn-ghost' }}"
+                    wire:click="$set('statusFilter', 'Scheduled')">{{ __('Scheduled') }}</button>
+                <button
+                    class="join-item btn btn-sm {{ $statusFilter === 'Completed' ? 'btn-active btn-success text-white' : 'btn-ghost' }}"
+                    wire:click="$set('statusFilter', 'Completed')">{{ __('Completed') }}</button>
+            </div>
+
+            <x-mary-button icon="o-arrow-down-tray" class="btn-ghost btn-sm" tooltip="{{ __('Export History') }}" />
+        </div>
     </div>
 
-    @if ($sessions->isNotEmpty())
+    {{-- 📋 SESSIONS LIST --}}
+    <div class="space-y-4">
+        @forelse($sessions as $session)
+            <div
+                class="bg-base-100 rounded-xl border border-base-200 p-4 shadow-sm hover:border-primary/30 transition-all flex flex-col md:flex-row gap-4 items-start md:items-center">
 
-        <x-mary-table container-class="" :headers="$headers" :rows="$sessions" with-pagination>
+                {{-- Date Badge --}}
+                <div
+                    class="flex flex-col items-center justify-center bg-base-200/50 rounded-lg p-3 min-w-[80px] border border-base-200">
+                    <span
+                        class="text-xs font-bold text-gray-500 uppercase">{{ $session->scheduled_at->translatedFormat('M') }}</span>
+                    <span
+                        class="text-2xl font-black text-gray-800">{{ $session->scheduled_at->translatedFormat('d') }}</span>
+                    <span class="text-xs text-gray-400">{{ $session->scheduled_at->translatedFormat('Y') }}</span>
+                </div>
 
-            {{-- Custom scope for Session Status (Crucial for quick identification) --}}
-            @scope('cell_status', $session)
-                <x-mary-badge :value="$session->status"
-                    class="{{ match ($session->status) {
-                        'Completed' => 'bg-green-100 text-green-800',
-                        'Scheduled' => 'bg-indigo-100 text-indigo-800',
-                        'Cancelled', 'No Show' => 'bg-red-100 text-red-800',
-                        'Rescheduled' => 'bg-yellow-100 text-yellow-800',
-                        default => 'bg-gray-100 text-gray-800',
-                    } }}" />
-            @endscope
+                {{-- Session Info --}}
+                <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-1">
+                        <h3 class="font-bold text-lg">{{ $session->focus_area }}</h3>
+                        <x-mary-badge :value="__($session->status)"
+                            class="text-xs font-bold
+                            @if ($session->status === 'Completed')
+badge-success/10 text-success
+@elseif($session->status === 'Scheduled')
+badge-info/10 text-info
+@elseif($session->status === 'Cancelled')
+badge-error/10 text-error
+@else
+badge-warning/10 text-warning
+@endif" />
+                    </div>
 
-            {{-- Custom scope for Billing Status (Important for Admin/Billing staff) --}}
-            @scope('cell_billing_status', $session)
-                <x-mary-badge :value="$session->billing_status"
-                    class="{{ match ($session->billing_status) {
-                        'Paid' => 'bg-green-200 text-green-900',
-                        'Billed' => 'bg-blue-200 text-blue-900',
-                        'Pending' => 'bg-orange-200 text-orange-900',
-                        default => 'bg-gray-200 text-gray-900', // Not Applicable/Cancelled
-                    } }}" />
-            @endscope
+                    <div class="flex flex-wrap gap-4 text-sm text-gray-500">
+                        <div class="flex items-center gap-1">
+                            <x-mary-icon name="o-clock" class="w-4 h-4" />
+                            {{ $session->scheduled_at->translatedFormat('H:i') }}
+                            ({{ $session->duration_minutes }}{{ __('m') }})
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <x-mary-icon name="o-user-circle" class="w-4 h-4" />
+                            {{ $session->user->name }}
+                        </div>
+                        @if ($session->billing_status !== 'Not Applicable')
+                            <div class="flex items-center gap-1">
+                                <x-mary-icon name="o-currency-dollar" class="w-4 h-4" />
+                                <span
+                                    class="{{ $session->billing_status === 'Paid' ? 'text-success' : 'text-warning' }}">
+                                    {{ __($session->billing_status) }}
+                                </span>
+                            </div>
+                        @endif
+                    </div>
+                </div>
 
-            {{-- Actions column (for edit, complete, cancel actions) --}}
-            @scope('actions', $session, $patient)
-                <x-mary-dropdown>
-
+                {{-- Actions --}}
+                <div class="flex gap-2 self-end md:self-center">
                     @if ($session->status === 'Scheduled')
-                        <x-mary-menu-item title="Mark as Completed" icon="o-check-circle"
-                            wire:click="completeSession({{ $session->id }})" />
+                        <x-mary-button icon="o-check" class="btn-circle btn-sm btn-success text-white"
+                            tooltip="{{ __('Complete') }}" wire:click="markCompleted({{ $session->id }})" />
                     @endif
-                    @if ($session->status !== 'Cancelled')
-                        <x-mary-menu-item title="Edit" icon="s-pencil-square"
-                            link="{{ route('patient.session.edit', ['patient' => $patient->id, 'session' => $session->id]) }}" />
-                        <x-mary-menu-item title="Cancel Session" icon="o-x-circle"
-                            wire:click="confirmCancel({{ $session->id }})" />
-                    @endif
-                    <x-mary-menu-item title="Not Show" icon="o-face-frown"
-                        wire:click="confirmAbscent({{ $session->id }})" />
-                    <x-mary-menu-item title="Duplicate" icon="o-document-duplicate"
-                        wire:click="showDuplicateSessionModal({{ $session->id }})" />
-                </x-mary-dropdown>
-            @endscope
-        </x-mary-table>
 
-        {{-- You would need a separate modal for cancellation reasons --}}
-        {{-- <x-mary-modal wire:model="showCancelModal" ...></x-mary-modal> --}}
-        <x-mary-modal wire:model="showCancelModal" title="Cancel Therapy Session"
-            subtitle="A reason is required for tracking and auditing purposes." separator>
+                    <x-mary-dropdown right>
+                        <x-slot:trigger>
+                            <x-mary-button icon="o-ellipsis-vertical" class="btn-circle btn-sm btn-ghost" />
+                        </x-slot:trigger>
 
-            {{-- Input field for Cancellation Reason --}}
-            <div class="space-y-4">
-                <div class="text-lg text-red-700 font-semibold">
-                    {{ __('Please confirm cancellation and provide a reason.') }}
-                </div>
+                        <x-mary-menu-item title="{{ __('View Details') }}" icon="o-eye"
+                            link="{{ route('sessions.detail', $session->id) }}" />
 
-                <flux:textarea label="Cancellation Reason" wire:model="cancellationReason"
-                    placeholder="eg., Patient flu, Provider emergency, Scheduling conflict." rows="4" required />
-                @error('cancellationReason')
-                    <span class="text-red-500 text-sm">{{ $message }}</span>
-                @enderror
-            </div>
-
-            <x-slot:actions>
-                <x-mary-button label="Close" @click="$wire.showCancelModal = false" />
-                {{-- The wire:click method should be changed to a cancellation method, e.g., 'cancelSession' --}}
-                <x-mary-button label="Confirm Cancellation" wire:click="cancelSession" class="btn-warning" spinner />
-            </x-slot:actions>
-        </x-mary-modal>
-
-        <x-mary-modal wire:model="showAbscentModal" separator>
-
-            {{-- Dynamic Title --}}
-            <x-slot:title>
-                {{ __('Mark Session as No Show (Absent)') }}
-            </x-slot:title>
-
-            {{-- Dynamic Subtitle --}}
-            <x-slot:subtitle>
-                {{ __('A reason is required for tracking and auditing purposes.') }}
-            </x-slot:subtitle>
-
-            {{-- Dynamic Content --}}
-            <div class="space-y-4">
-
-                {{-- Confirmation Message --}}
-                <div class="text-lg font-semibold text-warning-700">
-                    {{ __('Please confirm marking this session as "No Show" and provide notes.') }}
-                </div>
-
-                {{-- Input field for Reason/Notes --}}
-                <flux:textarea label="{{ __('No Show Notes') }}" wire:model="abscentReason"
-                    placeholder="{{ __('eg., Patient failed to arrive and did not call.') }}" rows="4"
-                    required />
-                @error('reason')
-                    <span class="text-red-500 text-sm">{{ $message }}</span>
-                @enderror
-            </div>
-
-            <x-slot:actions>
-                <x-mary-button label="Close" @click="$wire.showAbscentModal = false" />
-
-                {{-- Dynamic Action Button --}}
-                <x-mary-button label="{{ __('Confirm No Show') }}" wire:click="markSessionAsNoShow" class="btn-warning"
-                    spinner />
-            </x-slot:actions>
-        </x-mary-modal>
-
-        <x-mary-modal wire:model="showDuplicateSchedule" title="Schedule session date" subtitle="You must enter a date."
-            separator>
-
-            {{-- Input field for Cancellation Reason --}}
-            <div class="space-y-4">
-                <div class="text-lg text-red-700 font-semibold">
-                    {{ __('Please enter a valid date for the duplicated session.') }}
-                </div>
-
-                {{-- Session Date --}}
-                <div>
-                    <flux:input label="Date" type="date" wire:model="session_date" required />
-                    @error('session_date')
-                        <span class="text-red-500 text-sm">{{ $message }}</span>
-                    @enderror
-                </div>
-
-                {{-- Start Time --}}
-                <div>
-                    <flux:input label="Start Time" type="time" wire:model="start_time" required />
-                    @error('start_time')
-                        <span class="text-red-500 text-sm">{{ $message }}</span>
-                    @enderror
-                </div>
-
-                {{-- Duration --}}
-                <div>
-                    <flux:input label="Duration (minutes)" type="number" wire:model="duration_minutes" min="15"
-                        max="180" required />
-                    @error('duration_minutes')
-                        <span class="text-red-500 text-sm">{{ $message }}</span>
-                    @enderror
+                        @if ($session->status !== 'Cancelled')
+                            <x-mary-menu-item title="{{ __('Edit') }}" icon="o-pencil"
+                                link="{{ route('patient.session.edit', ['patient' => $patient->id, 'session' => $session->id]) }}" />
+                            <x-mary-menu-item title="{{ __('Duplicate') }}" icon="o-document-duplicate"
+                                wire:click="confirmAction({{ $session->id }}, 'duplicate')" />
+                            <x-mary-menu-item title="{{ __('Cancel') }}" icon="o-x-mark" class="text-error"
+                                wire:click="confirmAction({{ $session->id }}, 'cancel')" />
+                            <x-mary-menu-item title="{{ __('No Show') }}" icon="o-user-minus" class="text-warning"
+                                wire:click="confirmAction({{ $session->id }}, 'noshow')" />
+                        @endif
+                    </x-mary-dropdown>
                 </div>
             </div>
+        @empty
+            <div class="text-center py-12 bg-base-100 rounded-xl border border-dashed border-base-300">
+                <x-mary-icon name="o-calendar" class="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                <h3 class="text-lg font-bold text-gray-500">{{ __('No sessions found') }}</h3>
+                <p class="text-sm text-gray-400">{{ __('Try adjusting your filters or schedule a new session.') }}</p>
+            </div>
+        @endforelse
 
-            <x-slot:actions>
-                <x-mary-button label="Close" @click="$wire.showDuplicateSchedule = false" />
-                {{-- The wire:click method should be changed to a cancellation method, e.g., 'cancelSession' --}}
-                <x-mary-button label="Confirm Duplicate" wire:click="duplicateSession" class="btn-warning" spinner />
-            </x-slot:actions>
-        </x-mary-modal>
-    @else
-        <x-alert color="info" title="No therapy sessions found">
-            <a href="{{ route('patient.session.create', ['patient' => $patient->id]) }}">
-                <flux:button variant="primary" color="indigo">{{ __('Schedule first session') }}</flux:button>
-            </a>
-        </x-alert>
-    @endif
+        {{ $sessions->links() }}
+    </div>
+
+    {{-- 🚫 CANCEL MODAL --}}
+    <x-mary-modal wire:model="showCancelModal" title="{{ __('Cancel Session') }}" class="backdrop-blur">
+        <div class="mb-4 text-gray-600">{{ __('Please provide a reason for cancellation. This will be recorded.') }}
+        </div>
+        <x-mary-textarea wire:model="reasonText" placeholder="{{ __('Reason...') }}" rows="3" />
+        <x-slot:actions>
+            <x-mary-button label="{{ __('Back') }}" @click="$wire.showCancelModal = false" />
+            <x-mary-button label="{{ __('Confirm Cancel') }}" class="btn-error"
+                wire:click="updateStatus('Cancelled')" />
+        </x-slot:actions>
+    </x-mary-modal>
+
+    {{-- 👻 NO SHOW MODAL --}}
+    <x-mary-modal wire:model="showNoShowModal" title="{{ __('Mark as No Show') }}" class="backdrop-blur">
+        <div class="mb-4 text-gray-600">{{ __('Did the patient fail to arrive? Add any relevant notes.') }}</div>
+        <x-mary-textarea wire:model="reasonText" placeholder="{{ __('Notes...') }}" rows="3" />
+        <x-slot:actions>
+            <x-mary-button label="{{ __('Back') }}" @click="$wire.showNoShowModal = false" />
+            <x-mary-button label="{{ __('Confirm No Show') }}" class="btn-warning"
+                wire:click="updateStatus('No Show')" />
+        </x-slot:actions>
+    </x-mary-modal>
+
+    {{-- 🔁 DUPLICATE MODAL --}}
+    <x-mary-modal wire:model="showDuplicateModal" title="{{ __('Duplicate Session') }}" class="backdrop-blur">
+        <div class="grid grid-cols-1 gap-4">
+            <x-mary-datepicker label="{{ __('New Date') }}" wire:model="dupDate" />
+            <div class="grid grid-cols-2 gap-4">
+                <x-mary-input label="{{ __('Time') }}" type="time" wire:model="dupTime" />
+                <x-mary-input label="{{ __('Duration (min)') }}" type="number" wire:model="dupDuration" />
+            </div>
+        </div>
+        <x-slot:actions>
+            <x-mary-button label="{{ __('Cancel') }}" @click="$wire.showDuplicateModal = false" />
+            <x-mary-button label="{{ __('Schedule Duplicate') }}" class="btn-primary"
+                wire:click="duplicateSession" />
+        </x-slot:actions>
+    </x-mary-modal>
+
 </div>

@@ -97,6 +97,6 @@ if (! function_exists('getAdminPermissions')) {
             'logout',
         ];
 
-        return array_merge($p, [getDoctorPermissions(), getAssistantPermissions()]);
+        return array_merge($p, getDoctorPermissions(), getAssistantPermissions());
     }
 }

@@ -1,110 +1,99 @@
-<div>
+<div class="space-y-8">
 
-    {{-- Use $diagnosis object for title --}}
-    <x-page-header :title="__('Diagnosis Detail')" :subtitle="__('ICD Code: ' . $diagnosis->icdCode->code)" />
+    <x-page-header title="{{ __('Diagnosis Record') }}" subtitle="{{ __('View clinical details for this condition.') }}"
+        separator>
+        <x-slot:actions>
+            <x-mary-button label="{{ __('Back to List') }}" icon="o-arrow-left" class="btn-ghost"
+                link="{{ route('patient.diagnosis.list', $diagnosis->patient_id) }}" />
+            <x-mary-button label="{{ __('Edit') }}" icon="o-pencil" class="btn-warning"
+                link="{{ route('patient.diagnosis.edit', ['patient' => $diagnosis->patient->id, 'diagnosis' => $diagnosis->id]) }}" />
+        </x-slot:actions>
+    </x-page-header>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-        {{-- 📝 Left Column (Diagnosis Details) --}}
+        {{-- 📝 LEFT: Diagnosis Card --}}
         <div class="lg:col-span-2 space-y-6">
-
-            <x-mary-card title="{{ __('Diagnosis Information') }}" shadow separator>
-                <div class="space-y-6">
-
-                    {{-- 1. ICD Code Display --}}
-                    <div class="bg-base-100 p-4 rounded-lg border border-gray-200">
-                        <h4 class="text-xs font-semibold uppercase text-gray-500">{{ __('ICD Code') }}</h4>
-                        <p class="text-xl font-bold text-primary">{{ $diagnosis->icdCode->code }}</p>
-                        <p class="text-sm text-gray-700">{{ $diagnosis->icdCode->description }}</p>
-                    </div>
-
-                    {{-- 2. Description / Clinical Notes --}}
+            <x-mary-card shadow class="border-t-4 border-primary">
+                <div class="flex items-start justify-between mb-6">
                     <div>
-                        <flux:label class="text-lg font-semibold">{{ __('Detailed Description / Clinical Notes') }}
-                        </flux:label>
-                        <p class="mt-2 p-3 bg-base-100 rounded-lg whitespace-pre-wrap">
-                            {{ $diagnosis->description ?? 'N/A' }}</p>
+                        <div class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">
+                            {{ __('ICD-10 Classification') }}</div>
+                        <div class="text-3xl font-black text-primary">{{ $diagnosis->icdCode->code }}</div>
+                        <div class="text-lg text-gray-700 font-medium mt-1">{{ $diagnosis->icdCode->description }}</div>
                     </div>
+                    <x-mary-badge :value="__($diagnosis->condition_status)"
+                        class="badge-lg font-bold
+                        @if ($diagnosis->condition_status === 'Active')
+badge-success/10 text-success
+@elseif($diagnosis->condition_status === 'Resolved')
+badge-neutral
+@else
+badge-warning/10 text-warning
+@endif" />
+                </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 border-t pt-4">
+                <div class="bg-base-200/50 p-4 rounded-xl border border-base-200 mb-6">
+                    <div class="text-xs font-bold text-gray-500 uppercase mb-2">{{ __('Clinical Notes') }}</div>
+                    <p class="text-gray-700 whitespace-pre-wrap leading-relaxed">
+                        {{ $diagnosis->description ?? __('No additional notes recorded.') }}</p>
+                </div>
 
-                        {{-- 3. Start Date --}}
-                        <div>
-                            <flux:label>{{ __('Start Date (Date of Onset)') }}</flux:label>
-                            <p class="font-semibold">{{ $diagnosis->start_date }}</p>
-                        </div>
-
-                        {{-- 4. Diagnosis Type --}}
-                        <div>
-                            <flux:label>{{ __('Diagnosis Type') }}</flux:label>
-                            <p class="font-semibold">{{ $diagnosis->type }}</p>
-                        </div>
-
-                        {{-- 5. Condition Status --}}
-                        <div>
-                            <flux:label>{{ __('Condition Status') }}</flux:label>
-                            <p class="font-semibold">{{ $diagnosis->condition_status }}</p>
-                        </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div class="flex items-center gap-2">
+                        <x-mary-icon name="o-tag" class="w-5 h-5 text-gray-400" />
+                        <span class="text-gray-500">{{ __('Type:') }}</span>
+                        <span class="font-semibold">{{ $diagnosis->type }}</span>
                     </div>
-
-                    <div class="pt-4 border-t">
-                        <flux:label>{{ __('Diagnosed By') }}</flux:label>
-                        <p class="font-semibold text-info">{{ $diagnosis->user->name ?? 'N/A' }}</p>
+                    <div class="flex items-center gap-2">
+                        <x-mary-icon name="o-calendar" class="w-5 h-5 text-gray-400" />
+                        <span class="text-gray-500">{{ __('Onset Date:') }}</span>
+                        <span class="font-semibold">{{ $diagnosis->start_date }}</span>
                     </div>
-
+                    <div class="flex items-center gap-2">
+                        <x-mary-icon name="o-user-circle" class="w-5 h-5 text-gray-400" />
+                        <span class="text-gray-500">{{ __('Diagnosed By:') }}</span>
+                        <span class="font-semibold">{{ $diagnosis->user->name ?? 'Unknown' }}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <x-mary-icon name="o-clock" class="w-5 h-5 text-gray-400" />
+                        <span class="text-gray-500">{{ __('Recorded:') }}</span>
+                        <span class="font-semibold">{{ $diagnosis->created_at->translatedFormat('M d, Y') }}</span>
+                    </div>
                 </div>
             </x-mary-card>
-
-            {{-- Optional: Action to edit the diagnosis --}}
-            <div class="flex justify-start mt-4">
-                <x-mary-button label="{{ __('Edit Diagnosis') }}" icon="o-pencil" class="btn-warning"
-                    link="{{ route('patient.diagnosis.edit', ['patient' => $diagnosis->patient->id, 'diagnosis' => $diagnosis->id]) }}" />
-            </div>
-
         </div>
 
-        {{-- 🖼️ Right Column: Patient Summary --}}
+        {{-- 👤 RIGHT: Patient Context --}}
         <div class="lg:col-span-1 space-y-6">
-            <x-mary-card title="{{ __('Patient Summary') }}" shadow separator>
-
-                <h3 class="text-lg font-semibold mb-2">
-                    {{ $diagnosis->patient->first_name }} {{ $diagnosis->patient->last_name }}
-                </h3>
-
-                {{-- REPLACED x-mary-list with standard HTML definition list (dl) --}}
-                <dl class="divide-y divide-base-200">
-
-                    {{-- Date of Birth --}}
-                    <div class="py-2 flex items-start space-x-3">
-                        <x-mary-icon name="o-calendar" class="w-5 h-5 flex-shrink-0 text-primary mt-1" />
-                        <div>
-                            <dt class="text-sm font-medium text-gray-500">{{ __('Date of Birth') }}</dt>
-                            <dd class="mt-0.5 text-base font-semibold">
-                                {{ $diagnosis->patient->date_of_birth ?? 'N/A' }}</dd>
-                        </div>
+            <x-mary-card title="{{ __('Patient Context') }}" shadow separator>
+                <div class="flex items-center gap-4 mb-4">
+                    <x-mary-avatar :image="$diagnosis->patient->avatar" :title="$diagnosis->patient->first_name" class="!w-12 !h-12" />
+                    <div>
+                        <div class="font-bold text-lg">{{ $diagnosis->patient->first_name }}
+                            {{ $diagnosis->patient->last_name }}</div>
+                        <div class="text-xs text-gray-500">{{ $diagnosis->patient->email }}</div>
                     </div>
+                </div>
 
-                    {{-- Gender --}}
-                    <div class="py-2 flex items-start space-x-3">
-                        <x-mary-icon name="o-user" class="w-5 h-5 flex-shrink-0 text-primary mt-1" />
-                        <div>
-                            <dt class="text-sm font-medium text-gray-500">{{ __('Gender') }}</dt>
-                            <dd class="mt-0.5 text-base font-semibold">{{ $diagnosis->patient->gender ?? 'N/A' }}</dd>
-                        </div>
+                <div class="space-y-3 text-sm border-t border-base-200 pt-4">
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">{{ __('Gender') }}</span>
+                        <span class="font-medium">{{ __($diagnosis->patient->gender) }}</span>
                     </div>
-
-                    {{-- Created At --}}
-                    <div class="py-2 flex items-start space-x-3">
-                        <x-mary-icon name="o-clock" class="w-5 h-5 flex-shrink-0 text-primary mt-1" />
-                        <div>
-                            <dt class="text-sm font-medium text-gray-500">{{ __('Recorded On') }}</dt>
-                            <dd class="mt-0.5 text-base font-semibold">{{ $diagnosis->created_at->format('Y-m-d') }}
-                            </dd>
-                        </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">{{ __('Age') }}</span>
+                        <span class="font-medium">{{ \Carbon\Carbon::parse($diagnosis->patient->date_of_birth)->age }}
+                            {{ __('Years') }}</span>
                     </div>
+                </div>
 
-                </dl>
+                <div class="mt-6 pt-4 border-t border-base-200">
+                    <x-mary-button label="{{ __('View Full Record') }}" class="btn-outline w-full"
+                        link="{{ route('patient.health.folder', $diagnosis->patient_id) }}" />
+                </div>
             </x-mary-card>
         </div>
+
     </div>
 </div>

@@ -6,7 +6,7 @@ return [
     'GENDERS' => ['Male', 'Female', 'Other'],
     'DIAGNOSIS_TYPE' => ['Primary', 'Secondary', 'Historical'],
     'DIAGNOSIS_CONDITION_STATUS' => ['Active', 'Resolved', 'Chronic', 'In Remission'],
-    'THERAPY_SESSION_STATUS' => ['Scheduled', 'Completed', 'Cancelled', 'No Show', 'Rescheduled'],
+    'THERAPY_SESSION_STATUS' => ['Scheduled', 'Checked In', 'In Session', 'Completed', 'Cancelled', 'No Show', 'Rescheduled'],
     'ERROR' => [
         'AUTHORIZATION' => 'Opps! You do not have permission to access.',
         'ACCOUNT_ISSUE' => 'Opps! Your account is not verified.Please check your email.',

@@ -2,65 +2,127 @@
 
 namespace App\Livewire\Sessions;
 
+use App\Models\Patient;
 use App\Models\TherapySession;
-use Carbon\Carbon;
+use Carbon\Carbon; //
+use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 class Schedule extends Component
 {
-    public string $currentDate;
+    use WithPagination;
 
-    public $weekStart;
+    #[Url]
+    public $date;
 
-    public $weekEnd;
+    // Session Detail Drawer
+    public $selectedSession = null;
 
-    public $scheduleTitle;
+    public $showDrawer = false;
+
+    // New Session Modal
+    public $showCreateModal = false;
+
+    public $patientSearch = '';
+
+    public $foundPatients = [];
 
     public function mount()
     {
-        $this->currentDate = Carbon::now()->toDateString();
+        $this->date = $this->date ?? now()->translatedFormat('Y-m-d');
     }
 
-    public function updatedCurrentDate()
+    // --- Search Logic for New Session ---
+
+    // Triggered when user types in the modal
+    public function updatedPatientSearch($value)
     {
-        // keep behaviour if you want to respond immediately
-        // but render() will re-run anyway on property update
+        if (strlen($value) < 2) {
+            $this->foundPatients = [];
+
+            return;
+        }
+
+        $this->foundPatients = Patient::query()
+            ->where('first_name', 'like', "%{$value}%")
+            ->orWhere('last_name', 'like', "%{$value}%")
+            ->orWhere('email', 'like', "%{$value}%")
+            ->limit(5)
+            ->get();
     }
 
-    public function navigate($direction)
+    public function createSessionForPatient($patientId)
     {
-        $date = Carbon::parse($this->currentDate);
-        $date->{$direction === 'next' ? 'addWeek' : 'subWeek'}();
-        $this->currentDate = $date->toDateString();
+        // Redirect to the existing route that you have in web.php
+        return redirect()->route('patient.session.create', ['patient' => $patientId]);
     }
 
-    /**
-     * Render — compute sessions here and pass to view.
-     */
+    public function updatedDate($value)
+    {
+        if (empty($value)) {
+            $this->date = now()->translatedFormat('Y-m-d');
+        }
+    }
+
+    // --- Existing Schedule Logic ---
+
+    public function previousWeek()
+    {
+        $this->date = Carbon::parse($this->date)->subWeek()->translatedFormat('Y-m-d');
+    }
+
+    public function nextWeek()
+    {
+        $this->date = Carbon::parse($this->date)->addWeek()->translatedFormat('Y-m-d');
+    }
+
+    public function today()
+    {
+        $this->date = now()->translatedFormat('Y-m-d');
+    }
+
+    public function selectSession($sessionId)
+    {
+        $this->selectedSession = TherapySession::with('patient', 'user')->find($sessionId);
+        $this->showDrawer = true;
+    }
+
     public function render()
     {
-        $date = Carbon::parse($this->currentDate);
-        $this->weekStart = $date->copy()->startOfWeek(Carbon::SUNDAY);
-        $this->weekEnd = $date->copy()->endOfWeek(Carbon::SATURDAY);
+        $anchorDate = Carbon::parse($this->date);
+        // 1. Determine Start/End days based on Locale
+        // Arabic: Saturday -> Friday
+        // Others: Monday -> Sunday (or adjust to Carbon::SUNDAY for US English)
+        $startDay = app()->getLocale() === 'ar' ? Carbon::SATURDAY : Carbon::MONDAY;
+        $endDay = app()->getLocale() === 'ar' ? Carbon::FRIDAY : Carbon::SUNDAY;
+        $startOfWeek = $anchorDate->copy()->startOfWeek($startDay);
+        $endOfWeek = $anchorDate->copy()->endOfWeek($endDay);
 
-        $this->scheduleTitle = $this->weekStart->format('M j').' - '.$this->weekEnd->format('M j, Y');
-
-        // Fetch sessions (an Eloquent collection of models)
-        $sessions = TherapySession::whereBetween('scheduled_at', [$this->weekStart, $this->weekEnd])
-            ->with('patient')
+        $sessions = TherapySession::query()
+            ->with(['patient', 'user'])
+            ->whereBetween('scheduled_at', [$startOfWeek, $endOfWeek])
             ->orderBy('scheduled_at')
             ->get();
 
-        // Group by day (this stays a Collection of Collections — but it's only passed to the view, not stored as a public prop)
-        $sessionsByDay = $sessions->groupBy(function ($session) {
-            return $session->scheduled_at->format('Y-m-d');
-        });
+        $weekGrid = [];
+        $currentDay = $startOfWeek->copy();
 
-        // Dispatch a browser event for the title (use dispatchBrowserEvent)
-        // $this->dispatchBrowserEvent('schedule-updated', ['title' => $this->scheduleTitle]);
+        for ($i = 0; $i < 7; $i++) {
+            $dateString = $currentDay->format('Y-m-d');
+            $weekGrid[$dateString] = [
+                'day_name' => $currentDay->translatedFormat('D'),
+                'day_number' => $currentDay->translatedFormat('d'),
+                'is_today' => $currentDay->isToday(),
+                'sessions' => $sessions->filter(fn ($s) => $currentDay->isSameDay($s->scheduled_at)),
+            ];
+            $currentDay->addDay();
+        }
 
         return view('livewire.schedule', [
-            'sessionsByDay' => $sessionsByDay,
+            'weekGrid' => $weekGrid,
+            'startOfWeek' => $startOfWeek,
+            'endOfWeek' => $endOfWeek,
         ]);
     }
 }

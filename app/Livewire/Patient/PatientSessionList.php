@@ -8,195 +8,140 @@ use Carbon\Carbon;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Mary\Traits\Toast;
+use Illuminate\Database\Eloquent\Builder;
 
 class PatientSessionList extends Component
 {
     use Toast, WithPagination;
 
-    public $patient;
+    public Patient $patient;
 
-    public $sessionToAbscentId;
-
-    public $sessionToCancelId;
-
-    public $sessionToDuplicateId;
-
-    public $showDuplicateSchedule;
-
-    public $showCancelModal;
-
-    public $cancellationReason = '';
-
-    public $showAbscentModal;
-
-    public $abscentReason = '';
-
+    // --- Filters & Sort ---
     public string $search = '';
+    public string $statusFilter = ''; // Empty = All
+    public array $sortBy = ['column' => 'scheduled_at', 'direction' => 'desc'];
 
-    public $session_date;   // Input: Date (YYYY-MM-DD)
+    // --- Modal States ---
+    public $showCancelModal = false;
+    public $showNoShowModal = false;
+    public $showDuplicateModal = false;
 
-    public $start_time;     // Input: Time (HH:MM)
+    // --- Action Data ---
+    public $selectedSessionId;
+    public $reasonText = '';
+    
+    // Duplicate Form Data
+    public $dupDate;
+    public $dupTime;
+    public $dupDuration;
 
-    public $duration_minutes; // Default to 60 minutes
+    // --- Actions ---
 
-    public function updatingSearch()
+    public function sort($column)
     {
-        $this->resetPage();
+        if ($this->sortBy['column'] === $column) {
+            $this->sortBy['direction'] = $this->sortBy['direction'] === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->sortBy['column'] = $column;
+            $this->sortBy['direction'] = 'asc';
+        }
     }
 
-    public function completeSession($sessionId)
+    public function confirmAction($id, $action)
     {
-        $session = TherapySession::find($sessionId);
-        $session->status = 'Completed';
-        $session->save();
+        $this->selectedSessionId = $id;
+        $this->reasonText = '';
+
+        if ($action === 'cancel') {
+            $this->showCancelModal = true;
+        } elseif ($action === 'noshow') {
+            $this->showNoShowModal = true;
+        } elseif ($action === 'duplicate') {
+            $session = TherapySession::find($id);
+            $this->dupDate = now()->format('Y-m-d');
+            $this->dupTime = $session->scheduled_at->format('H:i');
+            $this->dupDuration = $session->duration_minutes;
+            $this->showDuplicateModal = true;
+        }
+    }
+
+    public function updateStatus($status)
+    {
+        $this->validate(['reasonText' => 'required|string|min:5']);
+
+        $session = TherapySession::find($this->selectedSessionId);
+        
+        if ($session) {
+            $session->update([
+                'status' => $status,
+                'cancellation_reason' => $this->reasonText,
+                'cancelled_at' => $status === 'Cancelled' ? now() : null,
+                'billing_status' => 'Not Applicable'
+            ]);
+            
+            $this->success(__('Updated'), __("Session marked as $status."));
+        }
+
+        $this->showCancelModal = false;
+        $this->showNoShowModal = false;
+    }
+
+    public function markCompleted($id)
+    {
+        $session = TherapySession::find($id);
+        if ($session && $session->status === 'Scheduled') {
+            $session->update(['status' => 'Completed', 'billing_status' => 'Pending']);
+            $this->success(__('Success'), __('Session marked as completed.'));
+        }
     }
 
     public function duplicateSession()
     {
         $this->validate([
-            'session_date' => 'required|date|after_or_equal:today',
-            'start_time' => 'required|date_format:H:i',
-            'duration_minutes' => 'required|integer|min:15|max:180',
-        ]);
-        $session = TherapySession::findOrFail($this->sessionToDuplicateId);
-
-        $scheduledDateTime = Carbon::createFromFormat('Y-m-d H:i',
-            $this->session_date.' '.$this->start_time
-        );
-        TherapySession::create([
-            'patient_id' => $session->patient_id,
-            'user_id' => $session->user_id,
-            'scheduled_at' => $scheduledDateTime,
-            'duration_minutes' => $this->duration_minutes,
-
-            'focus_area' => $session->focus_area,
-            'notes' => $session->notes,
-            'homework_assigned' => $session->homework_assigned,
-
-            // Default status for a new session
-            'status' => 'Scheduled',
-            'billing_status' => 'Pending',
-        ]);
-        $this->showDuplicateSchedule = false;
-    }
-
-    public function cancelSession()
-    {
-        $this->validate(['cancellationReason' => 'required|string|min:10']);
-        $session = TherapySession::findOrFail($this->sessionToCancelId);
-        $session->update([
-            'status' => 'Cancelled',
-            'billing_status' => 'Not Applicable',
-            'cancelled_at' => now(),
-            'cancellation_reason' => $this->cancellationReason,
+            'dupDate' => 'required|date|after_or_equal:today',
+            'dupTime' => 'required',
+            'dupDuration' => 'required|integer|min:15'
         ]);
 
-        // Close modal and clean up
-        $this->showCancelModal = false;
-        session()->flash('success', 'Therapy session successfully cancelled.');
+        $original = TherapySession::find($this->selectedSessionId);
+        
+        if ($original) {
+            $newDate = Carbon::parse("$this->dupDate $this->dupTime");
 
-        // Refresh the table/component view
-        $this->dispatch('$refresh');
-    }
+            TherapySession::create([
+                'patient_id' => $original->patient_id,
+                'user_id' => $original->user_id,
+                'scheduled_at' => $newDate,
+                'duration_minutes' => $this->dupDuration,
+                'focus_area' => $original->focus_area,
+                'status' => 'Scheduled',
+                'billing_status' => 'Pending'
+            ]);
 
-    public function confirmCancel($sessionId)
-    {
-        $this->sessionToCancelId = $sessionId;
-        $this->cancellationReason = '';
-        $this->showCancelModal = true;
-    }
-
-    public function confirmAbscent($sessionId)
-    {
-        $this->sessionToAbscentId = $sessionId;
-        $this->abscentReason = '';
-        $this->showAbscentModal = true;
-    }
-
-    public function markSessionAsNoShow()
-    {
-        $session = TherapySession::find($this->sessionToAbscentId);
-        $session->status = 'No Show';
-        $session->cancellation_reason = $this->abscentReason; // Reuse the field for notes
-        $session->save();
-        $this->dispatch('session-updated');
-    }
-
-    public function showDuplicateSessionModal($sessionId)
-    {
-        $this->sessionToDuplicateId = $sessionId;
-        $this->session_date = date('Y-m-d', strtotime(now()));
-        $this->start_time = '08:00';
-        $this->duration_minutes = config('constants.DEFAULT_THERAPY_SESSION_TIME');
-        $this->showDuplicateSchedule = true;
-    }
-
-    public function delete()
-    {
-        if (is_null($this->sessionToCancelId)) {
-            // Should not happen, but a safeguard
-            $this->error(
-                title: 'No therapy session selected.',
-                description: 'Please select a therapy session before deleting',                  // optional (text)
-
-                timeout: 3000,                      // optional (ms)
-                redirectTo: null                    // optional (uri)
-            );
-
-            return;
+            $this->success(__('Duplicated'), __('New session scheduled successfully.'));
         }
 
-        $session = TherapySession::find($this->diagnosisToDeleteId);
-
-        if (! $session) {
-            $this->error(
-                title: 'No patient selected.',
-                description: 'Please select a patient before deleting',                  // optional (text)
-
-                timeout: 3000,                      // optional (ms)
-                redirectTo: null                    // optional (uri)
-            );
-            // Close the modal and clear the ID
-            $this->showCancelModal = false;
-            $this->sessionToCancelId = null;
-
-            return;
-        }
-        $session->delete();
-
-        // 3. Close modal, reset state, and notify
-        $this->showCancelModal = false;
-        $this->sessionToCancelId = null;
-
-        $this->success(
-            title: 'Session saved.',
-            description: 'Session deleted successfully!',                  // optional (text)
-            timeout: 3000,                      // optional (ms)
-            redirectTo: null                    // optional (uri)
-        );
-
-        $this->resetPage();
-    }
-
-    public function mount(Patient $patient)
-    {
-        $this->patient = $patient;
+        $this->showDuplicateModal = false;
     }
 
     public function render()
     {
-        $query = TherapySession::query()->where('patient_id', $this->patient->id);
+        $query = TherapySession::query()
+            ->where('patient_id', $this->patient->id)
+            ->with('user');
+
         if ($this->search) {
-            $query->where(function ($q) {
-                $q->where('id', 'like', '%'.$this->search.'%')
-                    ->orWhere('description', 'like', '%'.$this->search.'%')
-                    ->orWhere('condition_status', 'like', '%'.$this->search.'%')
-                    ->orWhere('type', 'like', '%'.$this->search.'%');
-            });
+            $query->where('focus_area', 'like', "%$this->search%");
         }
 
-        $sessions = $query->paginate(15);
+        if ($this->statusFilter) {
+            $query->where('status', $this->statusFilter);
+        }
 
-        return view('livewire.session.patient-session-list', compact('sessions'));
+        $query->orderBy($this->sortBy['column'], $this->sortBy['direction']);
+
+        return view('livewire.session.patient-session-list', [
+            'sessions' => $query->paginate(10)
+        ]);
     }
 }

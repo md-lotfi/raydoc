@@ -3,66 +3,99 @@
 namespace App\Livewire\Doctor;
 
 use App\Models\User;
-use Illuminate\Database\Query\Builder;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
+use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Mary\Traits\Toast;
 
 class DoctorsList extends Component
 {
-    use WithPagination;
+    use Toast, WithPagination;
 
-    // Table properties for Mary UI Table
-    public array $sortBy = ['column' => 'name', 'direction' => 'asc'];
-
+    // --- State ---
     public string $search = '';
 
-    // Headers for the Mary UI Table
+    public array $sortBy = ['column' => 'created_at', 'direction' => 'desc'];
+
+    // Delete Confirmation
+    public $doctorToDeleteId = null;
+
+    public $showDeleteModal = false;
+
+    // --- Data Definition ---
     public function headers(): array
     {
         return [
-            ['key' => 'name', 'label' => 'Name', 'class' => 'text-base'],
-            ['key' => 'email', 'label' => 'Email'],
-            ['key' => 'phone', 'label' => 'Phone'],
-            ['key' => 'date_of_birth', 'label' => 'DOB'],
-            ['key' => 'created_at', 'label' => 'Joined', 'sortBy' => 'created_at'],
-            ['key' => 'actions', 'label' => 'Actions'],
+            ['key' => 'name', 'label' => __('Doctor Name'), 'class' => 'w-1/3'],
+            ['key' => 'email', 'label' => __('Contact Info')],
+            ['key' => 'created_at', 'label' => __('Joined'), 'class' => 'hidden md:table-cell'],
+            ['key' => 'actions', 'label' => '', 'sortable' => false],
         ];
     }
 
-    /**
-     * Retrieves the list of users with the 'doctor' role, applies search, and handles sorting.
-     */
+    // --- Computed Data ---
+
+    #[Computed]
     public function doctors()
     {
-        return User::role('doctor')
+        return User::role(config('constants.ROLES.DOCTOR')) // Use constant for safety
             ->when($this->search, function (Builder $query) {
-                // Search across name, email, or phone
-                $query->where('name', 'like', "%{$this->search}%")
-                    ->orWhere('email', 'like', "%{$this->search}%")
-                    ->orWhere('phone', 'like', "%{$this->search}%");
+                $query->where(function ($q) {
+                    $q->where('name', 'like', "%{$this->search}%")
+                        ->orWhere('email', 'like', "%{$this->search}%")
+                        ->orWhere('phone', 'like', "%{$this->search}%");
+                });
             })
-            ->orderBy(...array_values($this->sortBy))
+            ->orderBy($this->sortBy['column'], $this->sortBy['direction'])
             ->paginate(10);
     }
 
-    public function delete(User $user)
-    {
-        // 1. You should add confirmation via a modal or notification before running this.
-        // 2. Ensure only users with appropriate permissions can delete doctors.
+    // --- Actions ---
 
-        // Example: Only delete if the user is a doctor
-        if ($user->hasRole('doctor')) {
-            $user->delete();
-            session()->flash('success', "Doctor {$user->name} successfully removed.");
+    public function sort($column)
+    {
+        if ($this->sortBy['column'] === $column) {
+            $this->sortBy['direction'] = $this->sortBy['direction'] === 'asc' ? 'desc' : 'asc';
         } else {
-            session()->flash('error', 'User not found or is not a doctor.');
+            $this->sortBy['column'] = $column;
+            $this->sortBy['direction'] = 'asc';
         }
+    }
+
+    public function confirmDelete($id)
+    {
+        // Prevent deleting yourself if you happen to be a doctor
+        if ($id === Auth::id()) {
+            $this->error(__('Action Denied'), __('You cannot delete your own account.'));
+
+            return;
+        }
+
+        $this->doctorToDeleteId = $id;
+        $this->showDeleteModal = true;
+    }
+
+    public function delete()
+    {
+        if ($this->doctorToDeleteId) {
+            $user = User::find($this->doctorToDeleteId);
+
+            if ($user && $user->hasRole(config('constants.ROLES.DOCTOR'))) {
+                $user->delete();
+                $this->success(__('Deleted'), __('Doctor account removed successfully.'));
+            } else {
+                $this->error(__('Error'), __('User not found or permission denied.'));
+            }
+        }
+
+        $this->showDeleteModal = false;
+        $this->doctorToDeleteId = null;
     }
 
     public function render()
     {
-        return view('livewire.doctors-list', [
-            'doctors' => $this->doctors(),
-        ]);
+        return view('livewire.doctors-list');
     }
 }

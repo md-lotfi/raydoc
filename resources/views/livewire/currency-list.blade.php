@@ -1,86 +1,91 @@
-@php
-    $headers = [
-        ['key' => 'id', 'label' => '#'],
-        [
-            'key' => 'currency_name',
-            'label' => 'Name',
-            'sortable' => true,
-        ],
-        [
-            'key' => 'code',
-            'label' => 'Code',
-            'sortable' => true,
-        ],
-        [
-            'key' => 'symbol',
-            'label' => 'Symbol',
-            'sortable' => false,
-        ],
-        [
-            'key' => 'thousand_separator',
-            'label' => 'Thousand Sep.',
-            'sortable' => false,
-        ],
-        [
-            'key' => 'decimal_separator',
-            'label' => 'Decimal Sep.',
-            'sortable' => false,
-        ],
-        [
-            'key' => 'exchange_rate',
-            'label' => 'Exchange Rate (vs Base)',
-            'sortable' => true,
-        ],
-    ];
-@endphp
+<div class="space-y-6">
 
-<div>
-    <x-page-header :title="__('Currencies')" :subtitle="__('Manage currency codes, symbols, and exchange rates')" />
+    {{-- 🟢 PAGE HEADER --}}
+    <x-page-header title="{{ __('Currencies') }}" subtitle="{{ __('Manage supported currencies and exchange rates.') }}"
+        separator>
+        <x-slot:actions>
+            <x-mary-button label="{{ __('Add Currency') }}" icon="o-plus" class="btn-primary"
+                link="{{ route('settings.currency.create') }}" />
+        </x-slot:actions>
+    </x-page-header>
 
-    <div>
-        <x-custom-search model="search" placeholder="{{ __('Search by code or name...') }}">
-            <x-slot:actions>
-                {{-- Button to create a new currency --}}
-                <a href="{{ route('settings.currency.create') }}">
-                    <x-mary-button icon="o-plus" label="Add New Currency" class="btn-primary" />
-                </a>
-            </x-slot:actions>
-        </x-custom-search>
-    </div>
-
-    <x-mary-table :headers="$headers" :rows="$currencies" with-pagination>
-
-        {{-- Custom scope for Exchange Rate --}}
-        @scope('cell_exchange_rate', $currency)
-            @if ($currency->exchange_rate)
-                <x-mary-badge :value="number_format($currency->exchange_rate, 4)" class="bg-blue-100 text-blue-800" />
-            @else
-                <span class="text-gray-500">N/A (Base)</span>
-            @endif
-        @endscope
-
-        {{-- Actions column for editing/deleting --}}
-        @scope('actions', $currency)
-            <div class="flex space-x-2">
-                <a href="{{ route('settings.currency.edit', ['currency' => $currency->id]) }}">
-                    <x-mary-button icon="s-pencil-square" class="btn-sm" />
-                </a>
-                <x-mary-button icon="o-trash" wire:click="confirmDelete({{ $currency->id }})" spinner
-                    class="btn-sm btn-error" />
-            </div>
-        @endscope
-
-    </x-mary-table>
-
-    {{-- Delete Confirmation Modal --}}
-    <x-mary-modal wire:model="showDeleteModal" title="Confirm Deletion" separator>
-        <div class="py-5 text-lg">
-            {{ __('Are you sure you want to delete this currency? This action cannot be undone and may affect billing history.') }}
+    {{-- 🎛️ CONTROLS --}}
+    <div
+        class="flex flex-col md:flex-row gap-4 justify-between items-center bg-base-100 p-4 rounded-xl shadow-sm border border-base-200">
+        <div class="w-full md:w-1/3">
+            <x-mary-input icon="o-magnifying-glass" placeholder="{{ __('Search code or name...') }}"
+                wire:model.live.debounce.300ms="search" class="w-full" />
         </div>
 
+        <div class="flex items-center gap-2 text-sm text-gray-500">
+            <x-mary-icon name="o-banknotes" class="w-4 h-4" />
+            <span>{{ $currencies->total() }} {{ __('Currencies Configured') }}</span>
+        </div>
+    </div>
+
+    {{-- 📋 TABLE --}}
+    <x-mary-card shadow class="bg-base-100">
+        <x-mary-table :headers="$this->headers()" :rows="$currencies" :sort-by="$sortBy" :link="route('settings.currency.edit', ['currency' => '[id]'])"
+            class="cursor-pointer hover:bg-base-50" with-pagination>
+
+            {{-- 🏷️ Code --}}
+            {{-- ✅ FIX: Pass $defaultCurrencyId as the 3rd argument here --}}
+            @scope('cell_code', $currency, $defaultCurrencyId)
+                <div class="flex items-center gap-2">
+                    <span class="font-mono font-bold text-lg">{{ $currency->code }}</span>
+                    @if ($currency->id === $defaultCurrencyId)
+                        <span class="badge badge-xs badge-primary">{{ __('Default') }}</span>
+                    @endif
+                </div>
+            @endscope
+
+            {{-- 💱 Exchange Rate --}}
+            @scope('cell_exchange_rate', $currency)
+                <div class="font-mono">
+                    {{ number_format($currency->exchange_rate, 4) }}
+                </div>
+            @endscope
+
+            {{-- 🔢 Formatting Preview --}}
+            @scope('cell_formatting', $currency)
+                <span class="text-gray-400 text-xs">
+                    1{{ $currency->thousand_separator }}000{{ $currency->decimal_separator }}00
+                </span>
+            @endscope
+
+            {{-- ⚙️ Actions --}}
+            @scope('actions', $currency, $defaultCurrencyId)
+                <div @click.stop>
+                    <x-mary-dropdown right>
+                        <x-slot:trigger>
+                            <x-mary-button icon="o-ellipsis-vertical" class="btn-sm btn-ghost btn-circle" />
+                        </x-slot:trigger>
+
+                        <x-mary-menu-item title="{{ __('Edit') }}" icon="o-pencil"
+                            link="{{ route('settings.currency.edit', $currency->id) }}" />
+
+                        @if ($currency->id !== $defaultCurrencyId)
+                            <x-mary-menu-item title="{{ __('Delete') }}" icon="o-trash" class="text-error"
+                                wire:click="confirmDelete({{ $currency->id }})" />
+                        @else
+                            <x-mary-menu-item title="{{ __('Default (Cannot Delete)') }}" icon="o-lock-closed"
+                                class="text-gray-400 cursor-not-allowed opacity-50" />
+                        @endif
+                    </x-mary-dropdown>
+                </div>
+            @endscope
+
+        </x-mary-table>
+    </x-mary-card>
+
+    {{-- 🗑️ Delete Modal --}}
+    <x-mary-modal wire:model="showDeleteModal" title="{{ __('Delete Currency') }}" class="backdrop-blur">
+        <div class="mb-5 text-gray-600">
+            {{ __('Are you sure you want to delete this currency? Historical records using this currency may display incorrectly.') }}
+        </div>
         <x-slot:actions>
-            <x-mary-button label="Cancel" @click="$wire.showDeleteModal = false" />
-            <x-mary-button label="Delete" wire:click="delete()" class="btn-error" spinner />
+            <x-mary-button label="{{ __('Cancel') }}" @click="$wire.showDeleteModal = false" />
+            <x-mary-button label="{{ __('Confirm Delete') }}" wire:click="delete" class="btn-error" spinner />
         </x-slot:actions>
     </x-mary-modal>
 

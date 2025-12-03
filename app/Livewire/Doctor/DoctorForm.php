@@ -4,12 +4,19 @@ namespace App\Livewire\Doctor;
 
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Livewire\Component;
-use Spatie\Permission\Models\Permission;
-use Spatie\Permission\Models\Role;
+use Livewire\WithFileUploads; // ✅ Import Flux
+use Mary\Traits\Toast;
 
 class DoctorForm extends Component
 {
+    use Toast, WithFileUploads;
+
+    public ?User $doctor = null;
+
     public string $name = '';
 
     public string $email = '';
@@ -28,78 +35,117 @@ class DoctorForm extends Component
 
     public ?string $phone = null;
 
-    // Permission properties
-    public array $permissions = []; // Array to hold selected permissions
+    public $avatar;
 
-    // Define the list of permissions a doctor can be granted
-    public array $doctorPermissions;
+    public $existingAvatar;
 
-    public function mount()
+    public array $permissions = [];
+
+    public array $availablePermissions = [];
+
+    public bool $selectAllPermissions = false;
+
+    public bool $showPassword = false;
+
+    public function mount(?User $doctor = null)
     {
-        $this->doctorPermissions = getDoctorPermissions();
+        $this->availablePermissions = getDoctorPermissions();
+
+        if (! empty($doctor)) {
+            $this->doctor = $doctor;
+            $this->name = $this->doctor->name;
+            $this->email = $this->doctor->email;
+            $this->dateOfBirth = $this->doctor->date_of_birth?->format('Y-m-d');
+            $this->gender = $this->doctor->gender;
+            $this->address = $this->doctor->address;
+            $this->city = $this->doctor->city;
+            $this->phone = $this->doctor->phone;
+            $this->existingAvatar = $this->doctor->avatar;
+            $this->permissions = $this->doctor->getAllPermissions()->pluck('name')->toArray();
+            $this->selectAllPermissions = count($this->permissions) === count($this->availablePermissions);
+        } else {
+            $this->permissions = $this->availablePermissions;
+            $this->selectAllPermissions = true;
+        }
     }
 
-    /**
-     * Validation rules for the form.
-     */
     protected function rules()
     {
         return [
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => ['required', 'string', 'min:8', 'same:passwordConfirmation'],
+            'email' => ['required', 'email', 'max:255', Rule::unique('users')->ignore($this->doctor?->id)],
+            'password' => [$this->doctor ? 'nullable' : 'required', 'string', 'min:8', 'same:passwordConfirmation'],
             'dateOfBirth' => 'nullable|date|before:today',
             'gender' => 'nullable|in:Male,Female,Other',
             'address' => 'nullable|string|max:255',
             'city' => 'nullable|string|max:255',
             'phone' => 'nullable|string|max:20',
             'permissions' => 'nullable|array',
+            'avatar' => 'nullable|image|max:2048',
         ];
     }
 
-    /**
-     * Creates the user, assigns the 'doctor' role, and syncs permissions.
-     */
+    public function generatePassword(): void
+    {
+        $randomPass = Str::random(12);
+        $this->password = $randomPass;
+        $this->passwordConfirmation = $randomPass;
+        $this->showPassword = true;
+        $this->success(__('Generated'), __('Password generated: ').$randomPass);
+    }
+
+    public function updatedSelectAllPermissions($value)
+    {
+        $this->permissions = $value ? $this->availablePermissions : [];
+    }
+
     public function save()
     {
         $this->validate();
 
-        // 1. Create the User
-        $user = User::create([
+        $userData = [
             'name' => $this->name,
             'email' => $this->email,
-            'password' => Hash::make($this->password),
             'date_of_birth' => $this->dateOfBirth,
             'gender' => $this->gender,
             'address' => $this->address,
             'city' => $this->city,
             'phone' => $this->phone,
-        ]);
+        ];
 
-        // 2. Assign the 'doctor' role
-        $user->assignRole(config('constants.ROLES.DOCTOR'));
-
-        // 3. Assign specific permissions selected by the admin
-        if (! empty($this->permissions)) {
-            // Ensure all selected permissions actually exist in the database
-            $validPermissions = Permission::whereIn('name', $this->permissions)->pluck('name');
-            $user->givePermissionTo($validPermissions);
+        if (! empty($this->password)) {
+            $userData['password'] = Hash::make($this->password);
         }
 
-        // Emit success message and reset form
-        session()->flash('success', 'Doctor user created and permissions assigned successfully.');
-        $this->reset();
+        if ($this->avatar) {
+            if ($this->doctor && $this->doctor->avatar) {
+                Storage::disk('public')->delete(str_replace('/storage/', '', $this->doctor->avatar));
+            }
+            $path = $this->avatar->store('avatars', 'public');
+            $userData['avatar'] = Storage::url($path);
+        }
+
+        if ($this->doctor) {
+            $this->doctor->update($userData);
+            $user = $this->doctor;
+            $message = __('Doctor profile updated successfully.');
+        } else {
+            $user = User::create($userData);
+            $user->assignRole(config('constants.ROLES.DOCTOR'));
+            $message = __('Doctor created successfully.');
+        }
+
+        if (! empty($this->permissions)) {
+            $user->syncPermissions($this->permissions);
+        }
+
+        $this->success(__('Success'), __('Success: ').$message);
+
+        return redirect()->route('doctors.list');
     }
 
     public function render()
     {
-        // Ensure all required permissions exist for the checklist
-        // NOTE: In a production app, permissions should be seeded, not created here.
-        // This is included only to ensure the checklist works during development.
-        /*foreach ($this->doctorPermissions as $perm) {
-            Permission::firstOrCreate(['name' => $perm]);
-        }*/
-
         return view('livewire.doctor-form');
     }
 }

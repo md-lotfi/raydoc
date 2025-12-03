@@ -93,7 +93,7 @@
                 {{-- Patient Name & Avatar --}}
                 @scope('cell_patient.first_name', $session)
                     <div class="flex items-center gap-3">
-                        <x-mary-avatar :image="$session->patient->avatar_url ?? null" :title="$session->patient->first_name" class="!w-8 !h-8 bg-gray-200" />
+                        <x-mary-avatar :image="$session->patient->avatar ?? null" :title="$session->patient->first_name" class="!w-8 !h-8 bg-gray-200" />
                         <a href="{{ route('patient.health.folder', $session->patient_id) }}"
                             class="font-bold hover:underline hover:text-primary transition">
                             {{ $session->patient->first_name }} {{ $session->patient->last_name }}
@@ -104,14 +104,15 @@
                 {{-- Date Formatting --}}
                 @scope('cell_actual_end_at', $session)
                     <div class="text-gray-500 text-sm">
-                        {{ \Carbon\Carbon::parse($session->actual_end_at)->format('M d, Y') }}
+                        {{ \Carbon\Carbon::parse($session->actual_end_at)->translatedFormat('M d, Y') }}
                     </div>
                 @endscope
 
                 {{-- Duration Badge --}}
                 @scope('cell_duration_minutes', $session)
                     <div class="flex justify-center">
-                        <span class="badge badge-ghost font-mono">{{ $session->duration_minutes }} min</span>
+                        <span
+                            class="badge badge-ghost font-mono">{{ __('min :min', ['min' => $session->duration_minutes]) }}</span>
                     </div>
                 @endscope
 

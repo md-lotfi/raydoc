@@ -1,6 +1,9 @@
-<div class="flex aspect-square size-8 items-center justify-center rounded-md bg-accent-content text-accent-foreground">
-    <x-app-logo-icon class="size-5 fill-current text-white dark:text-black" />
-</div>
-<div class="ms-1 grid flex-1 text-start text-sm">
-    <span class="mb-0.5 truncate leading-tight font-semibold">RayDoc</span>
+<div {{ $attributes->class(['flex items-center gap-2']) }}>
+    {{-- Reuse the icon we just created --}}
+    <x-app-logo-icon class="w-8 h-8 text-primary" />
+
+    {{-- Brand Name --}}
+    <span class="font-bold text-xl tracking-tight text-zinc-900 dark:text-zinc-100">
+        RAY<span class="text-primary">DOC</span>
+    </span>
 </div>

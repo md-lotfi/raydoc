@@ -3,7 +3,7 @@
 namespace App\Livewire\Patient;
 
 use App\Models\Patient;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Database\Eloquent\Builder;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Mary\Traits\Toast;
@@ -12,11 +12,66 @@ class ListPatients extends Component
 {
     use Toast, WithPagination;
 
+    public string $search = '';
+
+    public int $perPage = 10;
+
+    // Default Sort
+    public array $sortBy = ['column' => 'created_at', 'direction' => 'desc'];
+
+    // Filter States
+    public bool $showFilterDrawer = false;
+
+    public $statusFilter = null;
+
+    public $genderFilter = null;
+
+    // Detailed View & Deletion
+    public bool $showDetailsDrawer = false;
+
+    public ?Patient $selectedPatient = null;
+
     public $showDeleteModal = false;
 
     public $patientToDeleteId = null;
 
-    public string $search = '';
+    public function updatedSearch()
+    {
+        $this->resetPage();
+    }
+
+    public function updatedStatusFilter()
+    {
+        $this->resetPage();
+    }
+
+    public function sort($column)
+    {
+        if ($this->sortBy['column'] === $column) {
+            $this->sortBy['direction'] = $this->sortBy['direction'] === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->sortBy['column'] = $column;
+            $this->sortBy['direction'] = 'asc';
+        }
+    }
+
+    public function togglePatientStatus($id)
+    {
+        $patient = Patient::find($id);
+        if ($patient) {
+            $patient->is_active = ! $patient->is_active;
+            $patient->save();
+
+            $statusMsg = $patient->is_active ? __('Active') : __('Inactive');
+            $this->success(__('Status updated'), __('Patient is now :status', ['status' => $statusMsg]));
+        }
+    }
+
+    public function showPatientDetails($id)
+    {
+        $this->selectedPatient = Patient::with(['user', 'diagnoses'])->find($id);
+        $this->showDetailsDrawer = true;
+    }
 
     public function confirmDelete($userId)
     {
@@ -26,97 +81,89 @@ class ListPatients extends Component
 
     public function delete()
     {
-        if (is_null($this->patientToDeleteId)) {
-            // Should not happen, but a safeguard
-            $this->error(
-                title: 'No patient selected.',
-                description: 'Please select a patient before deleting',                  // optional (text)
-
-                timeout: 3000,                      // optional (ms)
-                redirectTo: null                    // optional (uri)
-            );
-
-            return;
+        if ($this->patientToDeleteId) {
+            $patient = Patient::find($this->patientToDeleteId);
+            if ($patient) {
+                $patient->delete();
+                $this->success(__('Deleted'), __('Patient :name has been deleted.', ['name' => $patient->first_name]));
+            }
         }
-
-        $patient = Patient::find($this->patientToDeleteId);
-
-        if (! $patient) {
-            $this->error(
-                title: 'No patient selected.',
-                description: 'Please select a patient before deleting',                  // optional (text)
-
-                timeout: 3000,                      // optional (ms)
-                redirectTo: null                    // optional (uri)
-            );
-            // Close the modal and clear the ID
-            $this->showDeleteModal = false;
-            $this->patientToDeleteId = null;
-
-            return;
-        }
-
-        $patientName = $patient->first_name; // Store name before deletion
-        $patient->delete();
-
-        // 3. Close modal, reset state, and notify
         $this->showDeleteModal = false;
         $this->patientToDeleteId = null;
+    }
 
-        $this->success(
-            title: 'Patient saved.',
-            description: 'Patient '.$patientName.' deleted successfully!',                  // optional (text)
-            timeout: 3000,                      // optional (ms)
-            redirectTo: null                    // optional (uri)
-        );
-
+    public function clearFilters()
+    {
+        $this->reset(['statusFilter', 'genderFilter', 'search']);
         $this->resetPage();
     }
 
-    public function updatingSearch()
+    public function exportCsv()
     {
-        $this->resetPage();
+        $fileName = 'patients_export_'.date('Y-m-d_H-i').'.csv';
+
+        return response()->streamDownload(function () {
+            $handle = fopen('php://output', 'w');
+
+            // Localized Headers
+            fputcsv($handle, [
+                __('ID'),
+                __('First Name'),
+                __('Last Name'),
+                __('Email'),
+                __('Phone'),
+                __('Status'),
+                __('Joined Date'),
+            ]);
+
+            Patient::query()->chunk(100, function ($patients) use ($handle) {
+                foreach ($patients as $patient) {
+                    fputcsv($handle, [
+                        $patient->id,
+                        $patient->first_name,
+                        $patient->last_name,
+                        $patient->email,
+                        $patient->phone_number,
+                        $patient->is_active ? __('Active') : __('Inactive'),
+                        $patient->created_at->format('Y-m-d'),
+                    ]);
+                }
+            });
+            fclose($handle);
+        }, $fileName);
     }
 
     public function render()
     {
-        $query = Patient::query();
+        $query = Patient::query()->with('user');
 
         if ($this->search) {
-            $query->where(function ($q) {
+            $query->where(function (Builder $q) {
                 $q->where('first_name', 'like', '%'.$this->search.'%')
                     ->orWhere('last_name', 'like', '%'.$this->search.'%')
                     ->orWhere('email', 'like', '%'.$this->search.'%')
                     ->orWhere('phone_number', 'like', '%'.$this->search.'%');
             });
         }
-        $patients = $query->with('user')->paginate(5);
 
-        // Log::debug(json_encode($patients));
-
-        return view('livewire.patient.list-patients', compact('patients'));
-    }
-
-    public function togglePatientStatus($id)
-    {
-        $patient = Patient::find($id);
-        $patient->is_active = $patient->is_active ? 0 : 1;
-        $patient->save();
-    }
-
-    public $sortBy = 'created_at';
-
-    public $sortDirection = 'desc';
-
-    public function sort($column)
-    {
-        if ($this->sortBy === $column) {
-            $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
-        } else {
-            $this->sortBy = $column;
-            $this->sortDirection = 'asc';
+        if ($this->statusFilter !== null && $this->statusFilter !== '') {
+            $query->where('is_active', $this->statusFilter);
         }
-    }
+        if ($this->genderFilter) {
+            $query->where('gender', $this->genderFilter);
+        }
 
-    public function mount() {}
+        $query->orderBy($this->sortBy['column'], $this->sortBy['direction']);
+
+        $stats = [
+            'total' => Patient::count(),
+            'active' => Patient::where('is_active', 1)->count(),
+            'inactive' => Patient::where('is_active', 0)->count(),
+        ];
+
+        return view('livewire.patient.list-patients', [
+            'patients' => $query->paginate($this->perPage),
+            'stats' => $stats,
+        ]);
+    }
 }

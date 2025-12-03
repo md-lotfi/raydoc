@@ -104,7 +104,7 @@ class GenerateInvoice extends Component
                     'therapy_session_id' => $session->id,
                     'billing_code_id' => $billingCode->id, // <--- NOW CORRECTLY POPULATED
                     'service_description' => $billingCode->name.
-                    ' | Session: '.$session->scheduled_at->format('Y-m-d'),
+                    ' | '.__('Session').': '.$session->scheduled_at->translatedFormat('Y-m-d'),
                     'unit_price' => $billingCode->standard_rate,
                     'units' => 1,
                     'subtotal' => $billingCode->standard_rate,

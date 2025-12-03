@@ -83,25 +83,32 @@ class Dashboard extends Component
             ->groupBy('status')
             ->pluck('count', 'status');
 
-        $labels = $sessionStatusCounts->keys()->toArray();
+        // 1. Get raw keys (English) for logic/colors
+        $rawStatuses = $sessionStatusCounts->keys()->toArray();
         $data = $sessionStatusCounts->values()->toArray();
 
-        // Define colors for visual appeal (adjust as needed)
+        // 2. Create translated labels for display
+        // This maps "Scheduled" -> "مجدول" (if in Arabic)
+        $labels = array_map(fn ($status) => __($status), $rawStatuses);
+
+        // Define colors using ORIGINAL database keys
         $backgroundColors = [
-            'Scheduled' => '#3b82f6', // Blue (Info)
-            'Completed' => '#10b981', // Green (Success)
-            'Cancelled' => '#ef4444', // Red (Error)
-            'No Show' => '#f59e0b',   // Amber (Warning)
+            'Scheduled' => '#3b82f6',
+            'Completed' => '#10b981',
+            'Cancelled' => '#ef4444',
+            'No Show' => '#f59e0b',
         ];
 
+        // Map colors using $rawStatuses (not the translated ones)
+        $colors = array_map(fn ($status) => $backgroundColors[$status] ?? '#9ca3af', $rawStatuses);
+
         $chartData = [
-            'labels' => $labels,
+            'labels' => $labels, // ✅ Uses Translated Labels
             'datasets' => [
                 [
-                    'label' => 'Session Count',
+                    'label' => __('Session Count'), // ✅ Translated Dataset Title
                     'data' => $data,
-                    // Map status labels to colors, defaulting to a gray color
-                    'backgroundColor' => array_map(fn ($status) => $backgroundColors[$status] ?? '#9ca3af', $labels),
+                    'backgroundColor' => $colors,
                 ],
             ],
         ];
@@ -116,17 +123,13 @@ class Dashboard extends Component
         ];
 
         // ==========================================================
-        // 2. Weekly Revenue Trend Chart (Line) - ACTUAL DATA
+        // 2. Weekly Revenue Trend Chart (Line)
         // ==========================================================
 
-        // Define the period: Last 4 full weeks (28 days)
         $endDate = Carbon::now()->endOfDay();
         $startDate = Carbon::now()->subDays(28)->startOfDay();
 
-        // 1. Fetch data from the database
-        // We group payments by week number and sum the amount paid.
         $weeklyRevenueData = Payment::select(
-            // Cast the date to the week start date for better grouping/labeling
             DB::raw('DATE_FORMAT(payment_date, "%Y-%u") as week_group'),
             DB::raw('SUM(amount) as total_revenue')
         )
@@ -135,30 +138,24 @@ class Dashboard extends Component
             ->orderBy('week_group')
             ->get();
 
-        // 2. Prepare the chart labels and data arrays
         $labels = [];
         $revenueData = [];
 
-        // Generate labels and data for the last 4 weeks dynamically
         $currentWeek = Carbon::parse($startDate);
 
         for ($i = 0; $i < 4; $i++) {
-            $weekStart = $currentWeek->copy()->startOfWeek(Carbon::SUNDAY); // Assuming week starts Sunday
-            $weekEnd = $weekStart->copy()->endOfWeek(Carbon::SATURDAY);
+            $weekStart = $currentWeek->copy()->startOfWeek(Carbon::SUNDAY);
 
-            $weekFormat = $weekStart->format('Y-W'); // Get Year-Week format to match DB grouping
-
-            // 3. Find the revenue for this week, or use 0 if no payment was made
             $revenueRow = $weeklyRevenueData->firstWhere('week_group', $weekStart->format('Y-u'));
 
-            $labels[] = 'Week of '.$weekStart->format('M j');
+            // ✅ NEW: Use translatedFormat() and __()
+            // Example Output (AR): "أسبوع 02 ديسمبر"
+            $labels[] = __('Week of').' '.$weekStart->translatedFormat('M j');
+
             $revenueData[] = round($revenueRow->total_revenue ?? 0, 2);
 
             $currentWeek->addWeek();
         }
-
-        // If you prefer 'Week 1, Week 2, Week 3, Week 4' simple labels:
-        // $labels = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
 
         $this->weeklyRevenueChart = [
             'type' => 'line',
@@ -166,9 +163,9 @@ class Dashboard extends Component
                 'labels' => $labels,
                 'datasets' => [
                     [
-                        'label' => 'Weekly Revenue ($)',
-                        'data' => $revenueData, // ⬅️ NOW USING ACTUAL DATA
-                        'borderColor' => '#10b981', // Green for revenue
+                        'label' => __('Weekly Revenue'), // ✅ Translated Label
+                        'data' => $revenueData,
+                        'borderColor' => '#10b981',
                         'tension' => 0.3,
                         'fill' => false,
                     ],
@@ -179,7 +176,7 @@ class Dashboard extends Component
                 'scales' => [
                     'y' => [
                         'beginAtZero' => true,
-                        'title' => ['display' => true, 'text' => 'Revenue ($)'],
+                        'title' => ['display' => true, 'text' => __('Revenue').' ('.settings()->currency->symbol.')'], // ✅ Dynamic Currency
                     ],
                 ],
             ],

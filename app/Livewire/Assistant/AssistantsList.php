@@ -3,64 +3,89 @@
 namespace App\Livewire\Assistant;
 
 use App\Models\User;
-use Illuminate\Database\Query\Builder;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Livewire\Attributes\Computed;
+use Illuminate\Database\Eloquent\Builder;
+use Mary\Traits\Toast;
 
 class AssistantsList extends Component
 {
-    use WithPagination;
+    use WithPagination, Toast;
 
-    // Table properties for Mary UI Table
-    public array $sortBy = ['column' => 'name', 'direction' => 'asc'];
-
+    // --- State ---
     public string $search = '';
+    public array $sortBy = ['column' => 'created_at', 'direction' => 'desc'];
 
-    // Headers for the Mary UI Table
+    // Delete Confirmation
+    public $assistantToDeleteId = null;
+    public $showDeleteModal = false;
+
+    // --- Data Definition ---
     public function headers(): array
     {
         return [
-            ['key' => 'name', 'label' => 'Name', 'class' => 'text-base'],
-            ['key' => 'email', 'label' => 'Email'],
-            ['key' => 'phone', 'label' => 'Phone'],
-            ['key' => 'date_of_birth', 'label' => 'DOB'],
-            ['key' => 'created_at', 'label' => 'Joined', 'sortBy' => 'created_at'],
-            ['key' => 'actions', 'label' => 'Actions'],
+            ['key' => 'name', 'label' => __('Name'), 'class' => 'w-1/3'],
+            ['key' => 'email', 'label' => __('Contact Info')],
+            ['key' => 'created_at', 'label' => __('Joined'), 'class' => 'hidden md:table-cell'],
+            ['key' => 'actions', 'label' => '', 'sortable' => false],
         ];
     }
 
-    /**
-     * Retrieves the list of users with the 'assistant' role, applies search, and handles sorting.
-     */
+    // --- Computed Data ---
+    
+    #[Computed]
     public function assistants()
     {
-        return User::role('assistant')
+        return User::role(config('constants.ROLES.ASSISTANT')) // Ensure constant exists
             ->when($this->search, function (Builder $query) {
-                // Search across name, email, or phone
-                $query->where('name', 'like', "%{$this->search}%")
-                    ->orWhere('email', 'like', "%{$this->search}%")
-                    ->orWhere('phone', 'like', "%{$this->search}%");
+                $query->where(function ($q) {
+                    $q->where('name', 'like', "%{$this->search}%")
+                      ->orWhere('email', 'like', "%{$this->search}%")
+                      ->orWhere('phone', 'like', "%{$this->search}%");
+                });
             })
-            ->orderBy(...array_values($this->sortBy))
+            ->orderBy($this->sortBy['column'], $this->sortBy['direction'])
             ->paginate(10);
     }
 
-    public function delete(User $user)
+    // --- Actions ---
+
+    public function sort($column)
     {
-        // Add safety checks, such as ensuring the currently logged-in user has permissions
-        // and that the target user is indeed an assistant.
-        if ($user->hasRole('assistant')) {
-            $user->delete();
-            session()->flash('success', "Assistant {$user->name} successfully removed.");
+        if ($this->sortBy['column'] === $column) {
+            $this->sortBy['direction'] = $this->sortBy['direction'] === 'asc' ? 'desc' : 'asc';
         } else {
-            session()->flash('error', 'User not found or is not an assistant.');
+            $this->sortBy['column'] = $column;
+            $this->sortBy['direction'] = 'asc';
         }
+    }
+
+    public function confirmDelete($id)
+    {
+        $this->assistantToDeleteId = $id;
+        $this->showDeleteModal = true;
+    }
+
+    public function delete()
+    {
+        if ($this->assistantToDeleteId) {
+            $user = User::find($this->assistantToDeleteId);
+            
+            if ($user && $user->hasRole(config('constants.ROLES.ASSISTANT'))) {
+                $user->delete();
+                $this->success(__('Deleted'), __('Assistant account removed successfully.'));
+            } else {
+                $this->error(__('Error'), __('User not found or permission denied.'));
+            }
+        }
+
+        $this->showDeleteModal = false;
+        $this->assistantToDeleteId = null;
     }
 
     public function render()
     {
-        return view('livewire.assistants-list', [
-            'assistants' => $this->assistants(),
-        ]);
+        return view('livewire.assistants-list');
     }
 }

@@ -1,166 +1,172 @@
-<div>
-    <x-page-header :title="__('Session Details')" :subtitle="__('Patient: ' . $session->patient->first_name . ' ' . $session->patient->last_name)" />
+<div class="space-y-6">
 
-    {{-- Status Alert (Success/Warning) --}}
-    @if (session()->has('success'))
-        <x-mary-alert icon="o-check-circle" class="alert-success mb-4">
-            {{ session('success') }}
-        </x-mary-alert>
-    @endif
-    @if (session()->has('warning'))
-        <x-mary-alert icon="o-exclamation-triangle" class="alert-warning mb-4">
-            {{ session('warning') }}
-        </x-mary-alert>
-    @endif
+    {{-- 🟢 HEADER: Navigation & Context --}}
+    <div class="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
 
-    {{-- Session Status Display --}}
-    <div class="flex mb-6">
-        <h2 class="text-xl font-semibold mb-2">{{ __('Current Status') }}</h2>
-        <x-mary-badge :value="$session->status" :class="[
-            'Scheduled' => 'badge-info',
-            'Completed' => 'badge-success',
-            'Cancelled' => 'badge-error',
-            'No Show' => 'badge-warning',
-        ][$session->status] ?? 'ms-4 badge-neutral'" class="text-lg font-bold ms-4 p-3" />
+        {{-- Left: Breadcrumbs & Navigation --}}
+        <div>
+            <div class="flex items-center gap-2 mb-2">
+                @if ($previousSession)
+                    <x-mary-button icon="o-chevron-left" class="btn-xs btn-circle btn-ghost"
+                        tooltip="{{ __('Previous Session') }}"
+                        link="{{ route('sessions.detail', $previousSession->id) }}" />
+                @endif
 
-        @if ($session->cancellation_reason)
-            <p class="text-error mt-2 italic">{{ __('Reason:') }} {{ $session->cancellation_reason }}</p>
-        @endif
+                <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">{{ __('Session Record') }}</span>
+
+                @if ($nextSession)
+                    <x-mary-button icon="o-chevron-right" class="btn-xs btn-circle btn-ghost"
+                        tooltip="{{ __('Next Session') }}" link="{{ route('sessions.detail', $nextSession->id) }}" />
+                @endif
+            </div>
+            <h1 class="text-2xl font-bold flex items-center gap-3">
+                {{ $session->patient->first_name }} {{ $session->patient->last_name }}
+                <span class="text-gray-400 font-light">|</span>
+                <span
+                    class="text-lg font-medium text-gray-600">{{ $session->scheduled_at->translatedFormat('M d, Y') }}</span>
+            </h1>
+        </div>
+
+        {{-- Right: Actions --}}
+        <div class="flex gap-2">
+            <x-mary-button label="{{ __('Print') }}" icon="o-printer" class="btn-ghost" onclick="window.print()" />
+            <x-mary-button label="{{ __('Back to List') }}" icon="o-arrow-left" class="btn-outline"
+                link="{{ route('sessions.list') }}" />
+        </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    {{-- 🔴 CANCELLATION BANNER --}}
+    @if ($session->status === 'Cancelled')
+        <div class="alert alert-error shadow-sm">
+            <x-mary-icon name="o-exclamation-triangle" />
+            <div>
+                <h3 class="font-bold">{{ __('Session Cancelled') }}</h3>
+                <div class="text-sm">{{ $session->cancellation_reason }}</div>
+            </div>
+        </div>
+    @endif
 
-        {{-- 📚 1. Scheduled & Metadata Card --}}
-        <x-mary-card title="{{ __('Scheduling & Metadata') }}" shadow class="lg:col-span-1">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-            {{-- REPLACED x-mary-list with standard HTML definition list (dl) --}}
-            <dl class="divide-y divide-base-200">
+        {{-- 📝 LEFT COLUMN: Clinical Workspace (2/3) --}}
+        <div class="lg:col-span-2 space-y-6">
 
-                {{-- Therapist --}}
-                <div class="py-3 flex items-start space-x-2">
-                    <x-mary-icon name="o-user-circle" class="w-5 h-5 flex-shrink-0 text-primary" />
-                    <div>
-                        <dt class="text-sm font-medium text-gray-500">{{ __('Therapist') }}</dt>
-                        <dd class="mt-1 text-base font-semibold">{{ $session->user->name }}</dd>
+            {{-- Documentation Card --}}
+            <x-mary-card title="{{ __('Clinical Documentation') }}" separator shadow>
+                <x-slot:menu>
+                    <div class="badge badge-neutral">{{ $session->focus_area }}</div>
+                </x-slot:menu>
+
+                <form wire:submit.prevent="updateClinicalDetails" class="space-y-6">
+
+                    {{-- Time Logging --}}
+                    <div
+                        class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-base-200/50 p-4 rounded-xl border border-base-200">
+                        <x-mary-input label="{{ __('Actual Start') }}" type="datetime-local" wire:model="actualStartAt"
+                            icon="o-play" :disabled="$session->status === 'Cancelled'" />
+                        <x-mary-input label="{{ __('Actual End') }}" type="datetime-local" wire:model="actualEndAt"
+                            icon="o-stop" :disabled="$session->status === 'Cancelled'" />
+                    </div>
+
+                    {{-- Notes --}}
+                    <x-mary-textarea label="{{ __('Session Notes') }}" wire:model="notes"
+                        placeholder="{{ __('Record clinical observations, patient progress, and interventions...') }}"
+                        rows="8" class="font-mono text-sm leading-relaxed" :disabled="$session->status === 'Cancelled'" />
+
+                    {{-- Homework --}}
+                    <x-mary-textarea label="{{ __('Homework / Next Steps') }}" wire:model="homeworkAssigned"
+                        icon="o-clipboard-document-check" rows="3" :disabled="$session->status === 'Cancelled'" />
+
+                    @if ($session->status !== 'Cancelled')
+                        <div class="flex justify-end border-t pt-4">
+                            <x-mary-button type="submit" label="{{ __('Save Changes') }}" icon="o-check"
+                                class="btn-primary" spinner="updateClinicalDetails" />
+                        </div>
+                    @endif
+                </form>
+            </x-mary-card>
+        </div>
+
+        {{-- 📊 RIGHT COLUMN: Metadata & Actions (1/3) --}}
+        <div class="lg:col-span-1 space-y-6">
+
+            {{-- Status Card --}}
+            <x-mary-card
+                class="border-t-4 {{ $session->status === 'Completed' ? 'border-success' : ($session->status === 'Scheduled' ? 'border-info' : 'border-base-300') }} shadow-md">
+                <div class="text-center">
+                    <div class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">
+                        {{ __('Current Status') }}</div>
+                    <div
+                        class="text-2xl font-black {{ $session->status === 'Completed' ? 'text-success' : ($session->status === 'Scheduled' ? 'text-info' : 'text-gray-500') }}">
+                        {{ __($session->status) }}
+                    </div>
+
+                    {{-- Status Actions --}}
+                    @if ($session->status === 'Scheduled')
+                        <div class="grid grid-cols-2 gap-2 mt-6">
+                            <x-mary-button label="{{ __('Complete') }}" class="btn-success btn-sm text-white"
+                                wire:click="markAsCompleted" />
+                            <x-mary-button label="{{ __('No Show') }}" class="btn-warning btn-sm"
+                                wire:click="$set('newStatus', 'No Show')" />
+                            <x-mary-button label="{{ __('Cancel') }}" class="btn-error btn-outline btn-sm col-span-2"
+                                wire:click="$set('showCancelModal', true)" />
+                        </div>
+                    @endif
+                </div>
+            </x-mary-card>
+
+            {{-- Metadata List --}}
+            <x-mary-card title="{{ __('Session Details') }}" separator shadow>
+                <div class="space-y-4 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">{{ __('Therapist') }}</span>
+                        <span class="font-medium">{{ $session->user->name }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">{{ __('Scheduled Duration') }}</span>
+                        <span class="font-medium">{{ $session->duration_minutes }} {{ __('min') }}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-500">{{ __('Billing') }}</span>
+                        <x-mary-badge :value="__($session->billing_status)" class="badge-ghost badge-sm" />
                     </div>
                 </div>
 
-                {{-- Scheduled Date --}}
-                <div class="py-3 flex items-start space-x-2">
-                    <x-mary-icon name="o-calendar" class="w-5 h-5 flex-shrink-0 text-primary" />
-                    <div>
-                        <dt class="text-sm font-medium text-gray-500">{{ __('Scheduled Date') }}</dt>
-                        <dd class="mt-1 text-base font-semibold">{{ $session->scheduled_at->format('Y-m-d') }}</dd>
-                    </div>
-                </div>
-
-                {{-- Scheduled Time --}}
-                <div class="py-3 flex items-start space-x-2">
-                    <x-mary-icon name="o-clock" class="w-5 h-5 flex-shrink-0 text-primary" />
-                    <div>
-                        <dt class="text-sm font-medium text-gray-500">{{ __('Scheduled Time') }}</dt>
-                        <dd class="mt-1 text-base font-semibold">{{ $session->scheduled_at->format('H:i') }}</dd>
-                    </div>
-                </div>
-
-                {{-- Duration --}}
-                <div class="py-3 flex items-start space-x-2">
-                    <x-mary-icon name="o-arrow-path-rounded-square" class="w-5 h-5 flex-shrink-0 text-primary" />
-                    <div>
-                        <dt class="text-sm font-medium text-gray-500">{{ __('Duration') }}</dt>
-                        <dd class="mt-1 text-base font-semibold">{{ $session->duration_minutes . ' minutes' }}</dd>
-                    </div>
-                </div>
-
-                {{-- Focus Area --}}
-                <div class="py-3 flex items-start space-x-2">
-                    <x-mary-icon name="o-tag" class="w-5 h-5 flex-shrink-0 text-primary" />
-                    <div>
-                        <dt class="text-sm font-medium text-gray-500">{{ __('Focus Area') }}</dt>
-                        <dd class="mt-1 text-base font-semibold">{{ $session->focus_area }}</dd>
-                    </div>
-                </div>
-
-                {{-- Billing Status --}}
-                <div class="py-3 flex items-start space-x-2">
-                    <x-mary-icon name="o-currency-dollar" class="w-5 h-5 flex-shrink-0 text-primary" />
-                    <div>
-                        <dt class="text-sm font-medium text-gray-500">{{ __('Billing Status') }}</dt>
-                        <dd class="mt-1">
-                            <x-mary-badge :value="$session->billing_status" :class="[
-                                'Billed' => 'badge-primary',
-                                'Pending' => 'badge-neutral',
-                                'Paid' => 'badge-success',
-                                'Not Applicable' => 'badge-ghost',
-                            ][$session->billing_status] ?? 'badge-neutral'" class="font-semibold" />
-                        </dd>
-                    </div>
-                </div>
-
-            </dl>
-        </x-mary-card>
-
-        {{-- 📝 2. Clinical Notes & Time Log Card --}}
-        <x-mary-card title="{{ __('Clinical Documentation') }}" shadow class="lg:col-span-2">
-            <form wire:submit.prevent="updateClinicalDetails" class="space-y-6">
-
-                <h3 class="font-semibold">{{ __('Actual Session Times') }}</h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <x-mary-input label="{{ __('Actual Start Time') }}" type="datetime-local"
-                        wire:model="actualStartAt" :disabled="$session->status === 'Cancelled'" />
-                    <x-mary-input label="{{ __('Actual End Time') }}" type="datetime-local" wire:model="actualEndAt"
-                        :disabled="$session->status === 'Cancelled'" />
-                </div>
-
-                <x-mary-textarea label="{{ __('Session Notes') }}" wire:model="notes" rows="6"
-                    :disabled="$session->status === 'Cancelled'" />
-                <x-mary-textarea label="{{ __('Homework Assigned') }}" wire:model="homeworkAssigned" rows="3"
-                    :disabled="$session->status === 'Cancelled'" />
-
-                @if ($session->status !== 'Cancelled')
-                    <div class="flex justify-end pt-4">
-                        <x-mary-button type="submit" label="{{ __('Save Clinical Details') }}" icon="o-paper-clip"
-                            class="btn-primary" spinner="updateClinicalDetails" />
+                {{-- Invoice Action --}}
+                @if ($session->status === 'Completed' && $session->billing_status === 'Pending')
+                    <div class="mt-6 pt-4 border-t">
+                        <x-mary-button label="{{ __('Generate Invoice') }}" icon="o-banknotes"
+                            class="btn-warning w-full"
+                            link="{{ route('invoice.generate', ['patient' => $session->patient_id, 'sessionIds' => [$session->id]]) }}" />
                     </div>
                 @endif
-            </form>
-        </x-mary-card>
+            </x-mary-card>
+
+            {{-- Patient Quick Link --}}
+            <a href="{{ route('patient.health.folder', $session->patient_id) }}" class="block group">
+                <div
+                    class="flex items-center gap-4 p-4 bg-base-100 rounded-xl border border-base-200 shadow-sm group-hover:border-primary transition-colors">
+                    <x-mary-avatar :image="$session->patient->avatar" class="!w-12 !h-12" />
+                    <div>
+                        <div class="text-xs text-gray-500">{{ __('View Health Folder') }}</div>
+                        <div class="font-bold group-hover:text-primary">{{ $session->patient->first_name }}
+                            {{ $session->patient->last_name }}</div>
+                    </div>
+                    <x-mary-icon name="o-chevron-right" class="ml-auto text-gray-300 group-hover:text-primary" />
+                </div>
+            </a>
+
+        </div>
     </div>
 
-    <hr class="my-8" />
-
-    {{-- ⚡ 3. Action Buttons --}}
-    <x-mary-card title="{{ __('Session Actions') }}" shadow class="mt-6">
-        <div class="flex flex-wrap gap-4">
-            @if ($session->status === 'Scheduled')
-                <x-mary-button label="{{ __('Mark as Completed') }}" icon="o-check-badge" wire:click="markAsCompleted"
-                    class="btn-success" spinner="markAsCompleted" />
-
-                <x-mary-button label="{{ __('Cancel Session') }}" icon="o-x-circle" wire:click="openCancelModal"
-                    class="btn-error" />
-
-                <x-mary-button label="{{ __('Mark as No Show') }}" icon="o-user-minus" class="btn-warning"
-                    wire:click="$set('newStatus', 'No Show')" />
-            @elseif ($session->status === 'Completed' && $session->billing_status === 'Pending')
-                {{-- Action to easily go to invoicing --}}
-                <x-mary-button label="{{ __('Create Invoice for this Session') }}" icon="o-receipt-percent"
-                    class="btn-warning"
-                    link="{{ route('invoices.create', ['patientId' => $session->patient_id, 'sessionIds' => [$session->id]]) }}" />
-            @endif
-        </div>
-    </x-mary-card>
-
-    {{-- 🚫 Cancellation Modal --}}
-    <x-mary-modal wire:model="showCancelModal" title="{{ __('Cancel Session') }}" separator>
-        <p class="text-lg mb-4">{{ __('Are you sure you want to cancel this session?') }}</p>
-
-        <x-mary-textarea label="{{ __('Reason for Cancellation') }}" wire:model="cancellationReason"
-            placeholder="{{ __('Enter a detailed reason...') }}" rows="4" required />
-
+    {{-- 🚫 Modal --}}
+    <x-mary-modal wire:model="showCancelModal" title="{{ __('Cancel Session') }}" class="backdrop-blur">
+        <div class="mb-4 text-gray-600">
+            {{ __('Please provide a reason for cancelling. This will be recorded in the patient\'s history.') }}</div>
+        <x-mary-textarea wire:model="cancellationReason" placeholder="{{ __('Reason...') }}" rows="3" />
         <x-slot:actions>
-            <x-mary-button label="{{ __('Close') }}" @click="$wire.showCancelModal = false" />
-            <x-mary-button label="{{ __('Confirm Cancellation') }}" wire:click="cancelSession" class="btn-error"
-                spinner="cancelSession" />
+            <x-mary-button label="{{ __('Keep Session') }}" @click="$wire.showCancelModal = false" />
+            <x-mary-button label="{{ __('Confirm Cancel') }}" class="btn-error" wire:click="cancelSession" />
         </x-slot:actions>
     </x-mary-modal>
 

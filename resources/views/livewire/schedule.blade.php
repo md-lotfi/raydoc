@@ -1,145 +1,138 @@
-<div>
-    <x-mary-card title="{{ __('Weekly Timeline Schedule') }}" shadow separator>
+<div class="space-y-6">
+    {{-- 🟢 Header with Actions --}}
+    {{-- 🟢 Header with Interactive Date Navigation --}}
+    <x-page-header title="{{ __('Schedule') }}" subtitle="{{ __('Manage your weekly appointments.') }}" separator>
+        <x-slot:actions>
 
-        <x-slot:menu>
-            <x-mary-button label="{{ __('New Session') }}" icon="o-plus" class="btn-primary"
-                link="{{ route('patient.list') }}" />
-        </x-slot:menu>
+            {{-- Interactive Date Navigator --}}
+            <div class="flex items-center gap-2 bg-base-100 p-1 rounded-lg border border-base-300 shadow-sm">
 
-        {{-- Controls and Navigation (Unchanged) --}}
-        <div class="flex justify-between items-center mb-6">
-            <div class="flex items-center space-x-2">
-                <x-mary-button icon="o-arrow-small-left" wire:click="navigate('prev')" class="btn-ghost" />
+                {{-- ⬅️ Previous Week --}}
+                <x-mary-button icon="o-chevron-left" wire:click="previousWeek"
+                    class="btn-sm btn-ghost text-base-content/70 hover:text-primary"
+                    tooltip="{{ __('Previous Week') }}" />
 
-                {{-- Display current period --}}
-                <h3 class="text-xl font-semibold" x-data="{ title: '{{ $scheduleTitle }}' }"
-                    x-on:schedule-updated.window="title = $event.detail.title">
-                    <span x-text="title"></span>
-                </h3>
+                {{-- 📅 Interactive Date Picker (Overlay) --}}
+                <div class="relative group">
+                    {{-- Hidden Native Date Input (Triggers Picker on Click) --}}
+                    <input type="date" wire:model.live="date"
+                        class="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
+                        title="{{ __('Pick a specific date') }}" />
 
-                <x-mary-button icon="o-arrow-small-right" wire:click="navigate('next')" class="btn-ghost" />
+                    {{-- Visible Label --}}
+                    <div
+                        class="btn btn-sm btn-ghost font-mono font-bold min-w-[160px] flex items-center gap-2 group-hover:bg-base-200 transition-colors">
+                        <x-mary-icon name="o-calendar"
+                            class="w-4 h-4 text-primary opacity-70 group-hover:opacity-100" />
+                        <span>{{ $startOfWeek->translatedFormat('M d') }}</span>
+                        <span class="opacity-40">-</span>
+                        <span>{{ $endOfWeek->translatedFormat('M d, Y') }}</span>
+                    </div>
+                </div>
 
-                <x-mary-button label="{{ __('Current Week') }}"
-                    wire:click="$set('currentDate', '{{ \Carbon\Carbon::now()->toDateString() }}')"
-                    class="btn-sm btn-outline" />
+                {{-- ➡️ Next Week --}}
+                <x-mary-button icon="o-chevron-right" wire:click="nextWeek"
+                    class="btn-sm btn-ghost text-base-content/70 hover:text-primary" tooltip="{{ __('Next Week') }}" />
             </div>
+
+            {{-- 🔄 Reset to Today (Separate Quick Action) --}}
+            <x-mary-button label="{{ __('Today') }}" wire:click="today" class="btn-sm btn-outline ml-2"
+                icon="o-calendar-days" />
+
+            {{-- New Session Button --}}
+            <x-mary-button label="{{ __('New Session') }}" icon="o-plus" class="btn-primary btn-sm ml-2"
+                wire:click="$set('showCreateModal', true)" />
+        </x-slot:actions>
+    </x-page-header>
+
+    {{-- 🗓️ Weekly Grid (Unchanged) --}}
+    <div class="grid grid-cols-1 lg:grid-cols-7 gap-4 lg:gap-2">
+        @foreach ($weekGrid as $date => $dayData)
+            <div
+                class="flex flex-col min-h-[400px] rounded-xl bg-base-100 border {{ $dayData['is_today'] ? 'border-primary/50 shadow-md ring-1 ring-primary/20' : 'border-base-200' }}">
+                <div class="p-3 text-center border-b border-base-200 bg-base-50/50 rounded-t-xl">
+                    <div class="text-xs uppercase font-bold tracking-wider opacity-60">{{ $dayData['day_name'] }}
+                    </div>
+                    <div class="text-2xl font-black {{ $dayData['is_today'] ? 'text-primary' : '' }}">
+                        {{ $dayData['day_number'] }}</div>
+                </div>
+
+                <div class="flex-1 p-2 space-y-2">
+                    @forelse($dayData['sessions'] as $session)
+                        <div wire:click="selectSession({{ $session->id }})"
+                            class="cursor-pointer p-2 rounded-lg border text-xs hover:shadow-md transition-all bg-base-100 border-base-300">
+                            <div class="flex justify-between mb-1">
+                                <span
+                                    class="font-bold">{{ \Carbon\Carbon::parse($session->scheduled_at)->translatedFormat('H:i') }}</span>
+                            </div>
+                            <div class="font-semibold truncate">{{ $session->patient->first_name }}
+                                {{ $session->patient->last_name }}</div>
+                        </div>
+                    @empty
+                        {{-- Ghost Slot --}}
+                        <div class="h-full flex items-center justify-center opacity-10">
+                            <span class="text-xs">{{ __('No events') }}</span>
+                        </div>
+                    @endforelse
+                </div>
+            </div>
+        @endforeach
+    </div>
+
+    {{-- 🔎 Session Detail Drawer (Same as before) --}}
+    <x-mary-drawer wire:model="showDrawer" class="w-11/12 lg:w-1/3" title="{{ __('Session Details') }}" right>
+        @if ($selectedSession)
+            <div class="space-y-4">
+                <div class="flex items-center gap-3">
+                    <x-mary-avatar :image="$selectedSession->patient->avatar ?? null" :title="$selectedSession->patient->first_name" />
+                    <div class="font-bold text-lg">{{ $selectedSession->patient->first_name }}
+                        {{ $selectedSession->patient->last_name }}</div>
+                </div>
+                <hr />
+                <div class="grid grid-cols-2 gap-4">
+                    <x-mary-stat title="Date"
+                        value="{{ \Carbon\Carbon::parse($selectedSession->scheduled_at)->translatedFormat('M d') }}" />
+                    <x-mary-stat title="Time"
+                        value="{{ \Carbon\Carbon::parse($selectedSession->scheduled_at)->translatedFormat('H:i') }}" />
+                </div>
+                <x-mary-button label="Edit Session"
+                    link="{{ route('patient.session.edit', ['patient' => $selectedSession->patient_id, 'session' => $selectedSession->id]) }}"
+                    class="btn-primary w-full" />
+            </div>
+        @endif
+    </x-mary-drawer>
+
+    {{-- 🆕 PATIENT SELECTION MODAL --}}
+    <x-mary-modal wire:model="showCreateModal" title="{{ __('Select Patient') }}" class="backdrop-blur">
+        <div class="mb-4 text-sm text-gray-500">
+            {{ __('Who is this session for? Search for a registered patient to continue.') }}
         </div>
 
-        <hr class="mb-6" />
+        <x-mary-input label="{{ __('Search Patient') }}" icon="o-magnifying-glass"
+            placeholder="{{ __('Type name or email...') }}" wire:model.live.debounce.300ms="patientSearch" autofocus />
 
-        {{-- 📅 TIMELINE CONTAINER --}}
-        {{-- Alpine data and logic (Unchanged) --}}
-        <div x-data="{
-            // Function to calculate session position (0-1440 minutes in a day)
-            sessionStyle(scheduledAt, duration) {
-                    const date = new Date(scheduledAt);
-                    const hours = date.getHours();
-                    const minutes = date.getMinutes();
-                    const startMinutes = (hours * 60) + minutes; // Total minutes from midnight
-        
-                    // Timeline width is 100%. A day is 1440 minutes (24 * 60).
-                    const leftPercentage = (startMinutes / 1440) * 100;
-                    const widthPercentage = (duration / 1440) * 100;
-        
-                    return `left: ${leftPercentage}%; width: ${widthPercentage}%;`;
-                },
-        
-                // Helper to determine status color
-                getStatusClass(status) {
-                    switch (status) {
-                        case 'Completed':
-                            return 'bg-success hover:bg-success-focus';
-                        case 'Scheduled':
-                            return 'bg-info hover:bg-info-focus';
-                        case 'Cancelled':
-                            return 'bg-error/50 hover:bg-error/70';
-                        case 'No Show':
-                            return 'bg-warning hover:bg-warning-focus';
-                        default:
-                            return 'bg-gray-500';
-                    }
-                }
-        }" class="flex overflow-hidden border rounded-lg"> {{-- 👈 NEW: Outer Flex Container --}}
-
-            {{-- 1. 📅 STATIC DAY COLUMN --}}
-            <div class="w-[100px] flex-shrink-0 bg-base-200 border-r border-gray-300">
-
-                {{-- TOP CORNER (for Hour Header alignment) --}}
-                <div class="h-[36px] border-b border-gray-300"></div>
-
-                {{-- Day Labels --}}
-                @php
-                    $dayLabels = $weekStart->copy();
-                @endphp
-                @for ($i = 0; $i < 7; $i++)
-                    <div
-                        class="h-16 border-b border-gray-300 text-sm font-semibold flex items-center justify-center p-2">
-                        {{ $dayLabels->format('D') }} <br /> ({{ $dayLabels->format('M j') }})
-                    </div>
-                    @php $dayLabels->addDay(); @endphp
-                @endfor
-            </div>
-
-            {{-- 2. 🕒 SCROLLING TIMELINE CONTENT --}}
-            <div class="overflow-x-auto grow">
-                <div class="min-w-[1200px]"> {{-- This minimum width ensures horizontal scrolling --}}
-
-                    {{-- TIMELINE HEADER (Hours) --}}
-                    {{-- Adjusted class for height and border to align with the Day Labels' top corner --}}
-                    <div class="grid grid-cols-24 border-b border-gray-300 bg-base-200 h-[36px] sticky top-0 z-10">
-                        @foreach (range(0, 23) as $hour)
-                            <div class="text-center text-xs p-1 border-r border-gray-300 last:border-r-0">
-                                {{ $hour }}:00
-                            </div>
-                        @endforeach
-                    </div>
-
-                    {{-- TIMELINE ROWS (Days) --}}
-                    @php
-                        $currentDay = $weekStart->copy();
-                    @endphp
-
-                    @for ($i = 0; $i < 7; $i++)
-                        @php
-                            $dayKey = $currentDay->format('Y-m-d');
-                            $sessions = $sessionsByDay[$dayKey] ?? collect();
-                        @endphp
-
-                        <div class="relative h-16 border-b border-gray-300 hover:bg-base-100">
-
-                            {{-- Day Grid Lines (Visual helper) --}}
-                            <div class="grid grid-cols-24 h-full">
-                                @foreach (range(0, 23) as $hour)
-                                    <div class="border-r border-gray-200"></div>
-                                @endforeach
-                            </div>
-
-                            {{-- Session Rectangles --}}
-                            @foreach ($sessions as $session)
-                                @php
-                                    $scheduledAt = $session->scheduled_at->toDateTimeString();
-                                    $duration = $session->duration_minutes;
-                                @endphp
-
-                                <a href="{{ route('sessions.detail', $session) }}" style=""
-                                    x-bind:style="sessionStyle('{{ $scheduledAt }}', {{ $duration }})"
-                                    :class="[getStatusClass('{{ $session->status }}')]"
-                                    class="absolute top-1 bottom-1 text-white text-xs p-1 rounded-md shadow-md cursor-pointer transition-all duration-150 ease-in-out z-30 overflow-hidden whitespace-nowrap"
-                                    title="{{ $session->patient->first_name }} - {{ $session->scheduled_at->format('H:i') }}">
-                                    <span class="font-semibold">{{ $session->scheduled_at->format('H:i') }}</span>
-                                    <span class="hidden sm:inline"> - {{ $session->patient->first_name }}</span>
-                                </a>
-                            @endforeach
+        <div class="mt-4 space-y-2">
+            @forelse($foundPatients as $patient)
+                <div wire:click="createSessionForPatient({{ $patient->id }})"
+                    class="flex items-center justify-between p-3 rounded-lg border border-base-200 hover:bg-base-200 cursor-pointer transition-colors">
+                    <div class="flex items-center gap-3">
+                        <x-mary-avatar :image="$patient->avatar_url ?? null" :title="$patient->first_name" class="!w-10 !h-10" />
+                        <div>
+                            <div class="font-bold">{{ $patient->first_name }} {{ $patient->last_name }}</div>
+                            <div class="text-xs text-gray-400">{{ $patient->email }}</div>
                         </div>
-
-                        @php
-                            $currentDay->addDay();
-                        @endphp
-                    @endfor
-
+                    </div>
+                    <x-mary-icon name="o-chevron-right" class="w-4 h-4 text-gray-400" />
                 </div>
-            </div> {{-- End SCROLLING TIMELINE CONTENT --}}
-
-        </div> {{-- End OUTER FLEX CONTAINER --}}
-    </x-mary-card>
+            @empty
+                @if (strlen($patientSearch) > 1)
+                    <div class="text-center py-4 text-gray-500">
+                        {{ __('No patients found.') }}
+                        <a href="{{ route('patient.create') }}"
+                            class="text-primary hover:underline">{{ __('Create new?') }}</a>
+                    </div>
+                @endif
+            @endforelse
+        </div>
+    </x-mary-modal>
 </div>

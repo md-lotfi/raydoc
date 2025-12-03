@@ -13,7 +13,6 @@ class PermissionTableSeeder extends Seeder
     public function run(): void
     {
         $permissions = getAdminPermissions();
-
         // Create or update permissions
         foreach ($permissions as $permission) {
             // Find or create the permission with the given name

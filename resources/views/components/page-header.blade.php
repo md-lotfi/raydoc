@@ -1,18 +1,34 @@
 @props([
     'title',
-    'subtitle' => null, // 'subtitle' is optional, defaulting to null
+    'subtitle' => null,
+    'separator' => false, // Make separator optional
 ])
 
-<div class="relative mb-6 w-full">
-    {{-- Display the primary title --}}
-    <flux:heading size="xl" level="1">{{ $title }}</flux:heading>
+<div {{ $attributes->class(['mb-8']) }}>
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 
-    {{-- Display the optional subtitle if provided --}}
-    @if ($subtitle)
-        <flux:subheading size="lg" class="mb-6">
-            {{ $subtitle }}
-        </flux:subheading>
+        {{-- 🟢 Left Side: Title & Subtitle --}}
+        <div>
+            <flux:heading size="xl" level="1">{{ $title }}</flux:heading>
+
+            @if ($subtitle)
+                <flux:subheading size="lg" class="mt-1 text-gray-500">
+                    {{ $subtitle }}
+                </flux:subheading>
+            @endif
+        </div>
+
+        {{-- 🔵 Right Side: Actions Slot --}}
+        @if (isset($actions))
+            <div class="flex flex-wrap items-center gap-2">
+                {{ $actions }}
+            </div>
+        @endif
+
+    </div>
+
+    {{-- Optional Separator --}}
+    @if ($separator)
+        <flux:separator variant="subtle" class="mt-6" />
     @endif
-
-    <flux:separator variant="subtle" />
 </div>

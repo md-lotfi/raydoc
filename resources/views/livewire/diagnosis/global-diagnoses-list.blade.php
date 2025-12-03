@@ -1,22 +1,17 @@
 <div class="space-y-6">
 
     {{-- 🟢 HEADER --}}
-    <x-page-header title="{{ __('Medical Diagnoses') }}"
-        subtitle="{{ __('Clinical history for ') . $patient->first_name . ' ' . $patient->last_name }}" separator>
-        <x-slot:actions>
-            <x-mary-button label="{{ __('Add Diagnosis') }}" icon="o-plus" class="btn-primary"
-                link="{{ route('patient.diagnosis.create', $patient->id) }}" />
-        </x-slot:actions>
-    </x-page-header>
+    <x-page-header title="{{ __('Clinical Diagnoses') }}"
+        subtitle="{{ __('Global registry of patient conditions and medical history.') }}" separator />
 
-    {{-- 📊 PATIENT STATS --}}
+    {{-- 📊 STATS OVERVIEW --}}
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <x-mary-stat title="{{ __('Total Conditions') }}" value="{{ $this->stats['total'] }}"
-            icon="o-clipboard-document-list" class="bg-base-100 shadow-sm border border-base-200" />
-        <x-mary-stat title="{{ __('Active Issues') }}" value="{{ $this->stats['active'] }}"
-            icon="o-exclamation-triangle" class="bg-base-100 shadow-sm border border-base-200" color="text-warning" />
-        <x-mary-stat title="{{ __('Primary Diagnoses') }}" value="{{ $this->stats['primary'] }}" icon="o-star"
-            class="bg-base-100 shadow-sm border border-base-200" color="text-primary" />
+        <x-mary-stat title="{{ __('Total Recorded') }}" value="{{ $stats['total'] }}" icon="o-clipboard-document-list"
+            class="bg-base-100 shadow-sm border border-base-200" />
+        <x-mary-stat title="{{ __('Active Cases') }}" value="{{ $stats['active'] }}" icon="o-exclamation-circle"
+            class="bg-base-100 shadow-sm border border-base-200" color="text-warning" />
+        <x-mary-stat title="{{ __('Resolved') }}" value="{{ $stats['resolved'] }}" icon="o-check-badge"
+            class="bg-base-100 shadow-sm border border-base-200" color="text-success" />
     </div>
 
     {{-- 🎛️ CONTROLS --}}
@@ -25,48 +20,58 @@
 
         {{-- Search --}}
         <div class="w-full md:w-1/3">
-            <x-mary-input icon="o-magnifying-glass" placeholder="{{ __('Search ICD code or description...') }}"
+            <x-mary-input icon="o-magnifying-glass" placeholder="{{ __('Search patient, ICD code, or condition...') }}"
                 wire:model.live.debounce.300ms="search" class="w-full" />
         </div>
 
         {{-- Filters --}}
-        <div class="flex flex-wrap gap-2 w-full md:w-auto">
-            {{-- Status Filter Tabs --}}
+        <div class="flex gap-2 w-full md:w-auto overflow-x-auto">
             <div class="join">
                 <button class="join-item btn btn-sm {{ $statusFilter === '' ? 'btn-neutral' : 'btn-ghost' }}"
-                    wire:click="$set('statusFilter', '')">{{ __('All') }}</button>
+                    wire:click="$set('statusFilter', '')">
+                    {{ __('All') }}
+                </button>
                 <button
                     class="join-item btn btn-sm {{ $statusFilter === 'Active' ? 'btn-active btn-warning' : 'btn-ghost' }}"
-                    wire:click="$set('statusFilter', 'Active')">{{ __('Active') }}</button>
+                    wire:click="$set('statusFilter', 'Active')">
+                    {{ __('Active') }}
+                </button>
                 <button
                     class="join-item btn btn-sm {{ $statusFilter === 'Resolved' ? 'btn-active btn-success text-white' : 'btn-ghost' }}"
-                    wire:click="$set('statusFilter', 'Resolved')">{{ __('Resolved') }}</button>
+                    wire:click="$set('statusFilter', 'Resolved')">
+                    {{ __('Resolved') }}
+                </button>
             </div>
-
-            {{-- Type Filter Dropdown --}}
-            <x-mary-dropdown label="{{ $typeFilter ?: __('Type') }}" class="btn-sm btn-outline">
-                <x-mary-menu-item title="{{ __('All Types') }}" wire:click="$set('typeFilter', '')" />
-                @foreach ($diagnosisTypes as $type)
-                    <x-mary-menu-item title="{{ __($type) }}"
-                        wire:click="$set('typeFilter', '{{ $type }}')" />
-                @endforeach
-            </x-mary-dropdown>
         </div>
     </div>
 
-    {{-- 📋 DIAGNOSIS TABLE --}}
+    {{-- 📋 DIAGNOSES TABLE --}}
     <x-mary-card shadow class="bg-base-100">
-        <x-mary-table :headers="$this->headers()" :rows="$this->diagnoses" :sort-by="$sortBy" :link="route('patient.diagnosis.detail', ['diagnosis' => '[id]'])"
+        <x-mary-table :headers="$this->headers()" :rows="$diagnoses" :sort-by="$sortBy" {{-- ✅ LINK FIX: No $event needed here. [id] is automatically replaced by MaryUI --}} :link="route('patient.diagnosis.detail', ['diagnosis' => '[id]'])"
             class="cursor-pointer hover:bg-base-50" with-pagination>
 
             {{-- 🏷️ ICD Code --}}
             @scope('cell_icdCode.code', $diagnosis)
-                <span class="font-mono font-bold text-primary text-lg">{{ $diagnosis->icdCode->code }}</span>
+                <div class="font-mono font-bold text-primary text-lg">{{ $diagnosis->icdCode->code }}</div>
             @endscope
 
-            {{-- 🏥 Description --}}
+            {{-- 👤 Patient --}}
+            @scope('cell_patient.last_name', $diagnosis)
+                <div class="flex items-center gap-3">
+                    <x-mary-avatar :image="$diagnosis->patient->avatar" :title="$diagnosis->patient->first_name" class="!w-8 !h-8" />
+                    <div class="flex flex-col">
+                        <span class="font-bold text-gray-800">{{ $diagnosis->patient->first_name }}
+                            {{ $diagnosis->patient->last_name }}</span>
+                        <span class="text-xs text-gray-400">{{ __('ID:') }} {{ $diagnosis->patient->id }}</span>
+                    </div>
+                </div>
+            @endscope
+
+            {{-- 🏥 Condition Description --}}
             @scope('cell_icdCode.description', $diagnosis)
-                <div class="font-medium text-gray-800">{{ $diagnosis->icdCode->description }}</div>
+                <div class="font-medium text-gray-700 truncate" title="{{ $diagnosis->icdCode->description }}">
+                    {{ $diagnosis->icdCode->description }}
+                </div>
                 @if ($diagnosis->description)
                     <div class="text-xs text-gray-500 italic truncate max-w-xs mt-0.5">"{{ $diagnosis->description }}"
                     </div>
@@ -75,10 +80,11 @@
 
             {{-- 🔖 Type Badge --}}
             @scope('cell_type', $diagnosis)
-                <x-mary-badge :value="__($diagnosis->type)"
+                <x-mary-badge :value="__($diagnosis->type)" {{-- ✅ Translate ONLY the display label --}}
                     class="text-xs font-bold
-                    @if ($diagnosis->type === 'Primary')
-badge-primary/10 text-primary
+        @if ($diagnosis->type === 'Primary')
+{{-- ⚠️ Keep checking the raw DB value (English) --}}
+            badge-primary/10 text-primary
 @elseif($diagnosis->type === 'Secondary')
 badge-secondary/10 text-secondary
 @else
@@ -101,14 +107,14 @@ badge-ghost
 @endif" />
             @endscope
 
-            {{-- 🗓️ Start Date --}}
+            {{-- 🗓️ Date --}}
             @scope('cell_start_date', $diagnosis)
-                <span
-                    class="text-gray-600">{{ $diagnosis->start_date ? $diagnosis->start_date->translatedFormat('M d, Y') : '-' }}</span>
+                {{-- Use translated format for localized dates (e.g. '01 Jan 2025') --}}
+                <span class="text-gray-500 text-sm">{{ $diagnosis->start_date->translatedFormat('M d, Y') }}</span>
             @endscope
 
             {{-- ⚙️ Actions --}}
-            @scope('actions', $diagnosis, $patient)
+            @scope('actions', $diagnosis)
                 <div @click.stop>
                     <x-mary-dropdown right>
                         <x-slot:trigger>
@@ -118,7 +124,9 @@ badge-ghost
                         <x-mary-menu-item title="{{ __('View Details') }}" icon="o-eye"
                             link="{{ route('patient.diagnosis.detail', $diagnosis->id) }}" />
                         <x-mary-menu-item title="{{ __('Edit') }}" icon="o-pencil"
-                            link="{{ route('patient.diagnosis.edit', ['patient' => $patient->id, 'diagnosis' => $diagnosis->id]) }}" />
+                            link="{{ route('patient.diagnosis.edit', ['patient' => $diagnosis->patient_id, 'diagnosis' => $diagnosis->id]) }}" />
+                        <x-mary-menu-item title="{{ __('Go to Patient') }}" icon="o-user"
+                            link="{{ route('patient.health.folder', $diagnosis->patient_id) }}" />
 
                         <x-mary-menu-separator />
 
@@ -134,7 +142,7 @@ badge-ghost
     {{-- 🗑️ Delete Modal --}}
     <x-mary-modal wire:model="showDeleteModal" title="{{ __('Delete Diagnosis') }}" class="backdrop-blur">
         <div class="mb-5 text-gray-600">
-            {{ __('Are you sure you want to delete this diagnosis? This action cannot be undone.') }}
+            {{ __('Are you sure you want to remove this diagnosis record? This action cannot be undone.') }}
         </div>
         <x-slot:actions>
             <x-mary-button label="{{ __('Cancel') }}" @click="$wire.showDeleteModal = false" />

@@ -3,94 +3,81 @@
 namespace App\Livewire\Billing;
 
 use App\Models\BillingCode;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 use Livewire\Component;
+use Mary\Traits\Toast;
 
 class BillingCodesForm extends Component
 {
-    public ?BillingCode $billingCode;
+    use Toast;
+
+    public ?BillingCode $billingCode = null;
 
     // Form Properties
-    public $code;
+    public string $code = '';
+    public string $name = '';
+    public ?string $description = null;
+    public $standard_rate = 0.00;
+    
+    // Constraints
+    public ?int $min_duration_minutes = null;
+    public ?int $max_duration_minutes = null;
+    
+    // Status
+    public bool $is_active = true;
 
-    public $name;
-
-    public $standard_rate;
-
-    public $min_duration_minutes = null;
-
-    public $max_duration_minutes = null;
-
-    public $is_active = true; // Default to active
-
-    public $description;
-
-    protected $validationAttributes = [
-        'min_duration_minutes' => 'minimum duration',
-        'max_duration_minutes' => 'maximum duration',
-    ];
+    public function mount($id = null)
+    {
+        if ($id) {
+            // 🟦 EDIT MODE
+            $this->billingCode = BillingCode::findOrFail($id);
+            $this->fill($this->billingCode->toArray());
+        }
+    }
 
     protected function rules()
     {
         return [
-            'code' => $this->billingCode ? 'required|string|max:20|exists:billing_codes,code' : 'required|string|max:20|unique:billing_codes,code',
+            'code' => [
+                'required', 
+                'string', 
+                'max:20', 
+                Rule::unique('billing_codes')->ignore($this->billingCode?->id)
+            ],
             'name' => 'required|string|max:255',
-            'standard_rate' => 'required|numeric|min:0.01|decimal:0,2',
-            'min_duration_minutes' => 'nullable|integer|min:1',
-            'max_duration_minutes' => 'nullable|integer|min:1|gte:min_duration_minutes', // Max must be >= Min
+            'description' => 'nullable|string|max:1000',
+            'standard_rate' => 'required|numeric|min:0',
+            'min_duration_minutes' => 'nullable|integer|min:0',
+            'max_duration_minutes' => 'nullable|integer|gte:min_duration_minutes',
             'is_active' => 'boolean',
-            'description' => 'nullable|string',
         ];
     }
 
-    public function mount(BillingCode $billingCode)
+    public function save()
     {
-        if ($billingCode) {
-            $this->billingCode = $billingCode;
-            $this->code = $billingCode->code;
-            $this->name = $billingCode->name;
-            $this->standard_rate = $billingCode->standard_rate;
-            $this->min_duration_minutes = $billingCode->min_duration_minutes;
-            $this->max_duration_minutes = $billingCode->max_duration_minutes;
-            $this->is_active = $billingCode->is_active;
-            $this->description = $billingCode->description;
-        }
-    }
+        $this->validate();
 
-    protected function getDataForSave()
-    {
-        return [
+        $data = [
             'code' => $this->code,
             'name' => $this->name,
+            'description' => $this->description,
             'standard_rate' => $this->standard_rate,
             'min_duration_minutes' => $this->min_duration_minutes,
             'max_duration_minutes' => $this->max_duration_minutes,
             'is_active' => $this->is_active,
-            'description' => $this->description,
         ];
-    }
 
-    public function saveCode()
-    {
-        $this->validate();
-
-        try {
-            $data = $this->getDataForSave();
-            if ($this->billingCode) {
-                $this->billingCode->update($data);
-                $action = 'Updated';
-            } else {
-                BillingCode::create($data);
-                $action = 'Added';
-            }
-            $this->dispatch('billingCode'.$action);
-            session()->flash('success', 'Billing code '.$this->code.' created successfully.');
-
-            return $this->redirect(route('billing.codes.list'), navigate: true);
-        } catch (\Throwable $th) {
-            Log::debug($th->getMessage());
-            session()->flash('error', 'There was an error saving the billing code: '.$th->getMessage());
+        if ($this->billingCode) {
+            $this->billingCode->update($data);
+            $message = __('Service code updated successfully.');
+        } else {
+            BillingCode::create($data);
+            $message = __('New service code created.');
         }
+
+        $this->success(__('Saved'), $message);
+
+        return redirect()->route('billing.codes.list');
     }
 
     public function render()

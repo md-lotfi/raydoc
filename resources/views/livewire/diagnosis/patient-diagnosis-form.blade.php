@@ -1,76 +1,75 @@
-<div class="p-4">
-    <x-page-header :title="__('Diagnosis')" :subtitle="$patient->first_name . ' ' . $patient->last_name" />
-    <form wire:submit.prevent="save">
-        <div class="grid sm:grid-cols-2 gap-4">
-            <div>
-                @if (session()->has('error'))
-                    <div class="alert alert-danger">
-                        {{ session()->get('error') }}
-                    </div>
-                @endif
-                @if (session()->has('success'))
-                    <div class="mt-4 p-4 bg-green-100 text-green-700 rounded">
-                        {{ session('success') }}
-                    </div>
-                @endif
+<div class="max-w-5xl mx-auto space-y-8">
 
-                <x-mary-choices label="{{ __('ICD Code') }}" wire:model="icd_searchable_id" :options="$icdCodes"
-                    placeholder="Search ..." min-chars="2" search-function="searchIcd"
-                    no-result-text="Ops! Nothing here ..." single clearable searchable option-label="code"
-                    option-sub-label="description" />
-                @error('icd_searchable_id')
-                    <span class="text-red-500">{{ $message }}</span>
-                @enderror
-                <div class="mb-5"></div>
+    <x-page-header title="{{ $diagnosisId ? __('Edit Diagnosis') : __('New Diagnosis') }}"
+        subtitle="{{ __('Patient: ') . $patient->first_name . ' ' . $patient->last_name }}" separator>
+        <x-slot:actions>
+            <x-mary-button label="{{ __('Cancel') }}" link="{{ route('patient.diagnosis.list', $patient->id) }}"
+                class="btn-ghost" />
+            <x-mary-button label="{{ $diagnosisId ? __('Update Record') : __('Save Diagnosis') }}" icon="o-check"
+                class="btn-primary" wire:click="save" spinner="save" />
+        </x-slot:actions>
+    </x-page-header>
 
-                <flux:textarea label="{{ __('Description') }}" wire:model="description"
-                    placeholder="{{ __('Enter description') }}" />
-                @error('description')
-                    <span class="text-red-500">{{ $message }}</span>
-                @enderror
-                <div class="mb-5"></div>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
+        {{-- 🏥 LEFT COLUMN: Core Diagnosis --}}
+        <div class="lg:col-span-2 space-y-6">
+            <x-mary-card title="{{ __('Clinical Condition') }}" shadow separator>
 
-                <flux:input label="{{ __('Start date') }}" type="date" wire:model="start_date"
-                    placeholder="{{ __('Enter start date') }}" />
-                @error('start_date')
-                    <span class="text-red-500">{{ $message }}</span>
-                @enderror
-                <div class="mb-5"></div>
+                <div class="space-y-6">
+                    {{-- ICD Search --}}
+                    <x-mary-choices label="{{ __('ICD-10 Code') }}" wire:model="icd_searchable_id" :options="$icdCodes"
+                        placeholder="{{ __('Search code or description...') }}" min-chars="2"
+                        search-function="searchIcd" single searchable icon="o-magnifying-glass" option-label="code"
+                        option-sub-label="description" class="text-lg">
+                        {{-- ✅ FIX: Use @scope instead of <x-slot:item> --}}
+                        @scope('item', $code)
+                            <div class="flex flex-col text-left">
+                                <span class="font-bold">{{ $code->code }}</span>
+                                <span class="text-xs text-gray-500 truncate">{{ $code->description }}</span>
+                            </div>
+                        @endscope
 
-                <flux:label>{{ __('Diagnosis type') }}</flux:label>
-                <flux:select wire:model="type" placeholder="Choose diagnosis type...">
-                    @foreach ($diagnosisTypes as $dt)
-                        <flux:select.option value="{{ $dt }}">{{ $dt }}</flux:select.option>
-                    @endforeach
+                        {{-- Optional: Customize the selected value display as well --}}
+                        @scope('selection', $code)
+                            <div class="flex flex-col text-left leading-tight">
+                                <span class="font-bold">{{ $code->code }}</span>
+                                <span class="text-xs text-gray-500">{{ Str::limit($code->description, 40) }}</span>
+                            </div>
+                        @endscope
+                    </x-mary-choices>
 
-                </flux:select>
-                @error('type')
-                    <span class="text-red-500">{{ $message }}</span>
-                @enderror
-                <div class="mb-5"></div>
+                    {{-- Description --}}
+                    <x-mary-textarea label="{{ __('Clinical Notes') }}" wire:model="description"
+                        placeholder="{{ __('Enter specific details regarding this diagnosis...') }}" rows="5"
+                        hint="{{ __('Visible in patient medical history') }}" />
+                </div>
 
-                <flux:label>{{ __('Condition Status') }}</flux:label>
-                <flux:select wire:model="condition_status" placeholder="Choose condition status...">
-                    @foreach ($conditionStatuses as $cs)
-                        <flux:select.option value="{{ $cs }}">{{ $cs }}</flux:select.option>
-                    @endforeach
-
-                </flux:select>
-                @error('condition_status')
-                    <span class="text-red-500">{{ $message }}</span>
-                @enderror
-                <div class="mb-5"></div>
-
-                <flux:button type="submit">
-                    <span wire:loading.remove>{{ __('Add Diagnosis') }}</span>
-                    <span wire:loading>{{ __('Saving ...') }}</span>
-
-                </flux:button>
-
-
-            </div>
-            <div></div>
+            </x-mary-card>
         </div>
-    </form>
+
+        {{-- ⚙️ RIGHT COLUMN: Metadata --}}
+        <div class="lg:col-span-1 space-y-6">
+            <x-mary-card title="{!! __('Status & Classification') !!}" shadow separator>
+
+                <div class="space-y-4">
+                    <x-mary-datepicker label="{{ __('Date of Onset') }}" wire:model="start_date" icon="o-calendar" />
+
+                    <x-mary-select label="{{ __('Type') }}" wire:model="type" :options="$diagnosisTypes" icon="o-tag"
+                        placeholder="{{ __('Select type...') }}" />
+
+                    <x-mary-select label="{{ __('Status') }}" wire:model="condition_status" :options="$conditionStatuses"
+                        icon="o-check-circle" placeholder="{{ __('Select status...') }}" />
+                </div>
+
+            </x-mary-card>
+
+            {{-- Save Button (Mobile) --}}
+            <div class="lg:hidden">
+                <x-mary-button label="{{ __('Save Diagnosis') }}" icon="o-check" class="btn-primary w-full"
+                    wire:click="save" />
+            </div>
+        </div>
+
+    </div>
 </div>

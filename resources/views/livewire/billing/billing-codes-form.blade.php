@@ -1,99 +1,88 @@
-<div>
+<div class="max-w-5xl mx-auto space-y-8">
 
-    <x-page-header :title="__('Add New Billing Code')" :subtitle="__('Define CPT/Service code and rate')" />
+    {{-- 🟢 HEADER --}}
+    <x-page-header title="{{ $billingCode ? __('Edit Service Code') : __('New Service Code') }}"
+        subtitle="{{ $billingCode ? __('Update pricing and rules for code :code', ['code' => $code]) : __('Define a new billable service or product.') }}"
+        separator>
+        <x-slot:actions>
+            <x-mary-button label="{{ __('Cancel') }}" link="{{ route('billing.codes.list') }}" class="btn-ghost" />
+            <x-mary-button label="{{ __('Save Code') }}" icon="o-check" class="btn-primary" wire:click="save"
+                spinner="save" />
+        </x-slot:actions>
+    </x-page-header>
 
-    @if (session()->has('success'))
-        <x-alert color="success" title="Success" class="mb-4">
-            {{ session('success') }}
-        </x-alert>
-    @endif
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-    <form wire:submit.prevent="saveCode" class="space-y-6">
+        {{-- 📝 LEFT COLUMN: Identification --}}
+        <div class="lg:col-span-2 space-y-6">
+            <x-mary-card title="{{ __('Service Details') }}"
+                subtitle="{{ __('Basic information about this service.') }}" separator shadow>
 
-        <h3 class="text-lg font-semibold border-b pb-2 mb-4 text-accent-700">{{ 'Service Definition' }}</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {{-- Code --}}
+                    <x-mary-input label="{{ __('CPT / Service Code') }}" wire:model="code" icon="o-tag"
+                        placeholder="e.g. 90837" hint="{{ __('Unique identifier for billing.') }}" />
 
-        {{-- Code and Name --}}
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {{-- Name --}}
+                    <x-mary-input label="{{ __('Service Name') }}" wire:model="name" icon="o-identification"
+                        placeholder="{{ __('e.g. Psychotherapy, 60 min') }}" />
+                </div>
 
-            {{-- Billing Code (e.g., CPT 90837) --}}
-            <div>
-                <flux:input label="{{ 'Billing Code (CPT/Service)' }}" :disabled="!empty($code)" wire:model="code"
-                    required placeholder="{{ __('Eg., 90837') }}" />
-                @error('code')
-                    <span class="text-red-500 text-sm">{{ $message }}</span>
-                @enderror
+                {{-- Description --}}
+                <div class="mt-4">
+                    <x-mary-textarea label="{{ __('Description (Optional)') }}" wire:model="description"
+                        placeholder="{{ __('Internal notes or invoice description...') }}" rows="3" />
+                </div>
+
+            </x-mary-card>
+
+            {{-- ⏱️ Constraints --}}
+            <x-mary-card title="{{ __('Time Constraints') }}"
+                subtitle="{{ __('Optional duration limits for this service.') }}" separator shadow>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <x-mary-input label="{{ __('Min Duration (min)') }}" wire:model="min_duration_minutes"
+                        type="number" icon="o-clock" suffix="min" />
+                    <x-mary-input label="{{ __('Max Duration (min)') }}" wire:model="max_duration_minutes"
+                        type="number" icon="o-clock" suffix="min" />
+                </div>
+            </x-mary-card>
+        </div>
+
+        {{-- 💰 RIGHT COLUMN: Pricing & Status --}}
+        <div class="lg:col-span-1 space-y-6">
+
+            {{-- Status Card --}}
+            <x-mary-card
+                class="bg-base-100 shadow-md border-t-4 {{ $is_active ? 'border-success' : 'border-base-300' }}">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h3 class="font-bold">{{ __('Status') }}</h3>
+                        <p class="text-xs text-gray-500">
+                            {{ $is_active ? __('Visible in invoices') : __('Hidden from selection') }}</p>
+                    </div>
+                    <x-mary-toggle wire:model="is_active" class="toggle-success" />
+                </div>
+            </x-mary-card>
+
+            {{-- Pricing Card --}}
+            <x-mary-card title="{{ __('Pricing') }}" separator shadow>
+
+                <x-mary-input label="{{ __('Standard Rate') }}" wire:model="standard_rate" type="number"
+                    step="0.01" icon="o-currency-dollar" class="font-bold text-lg" />
+
+                <div class="mt-4 text-xs text-gray-500 bg-base-200 p-3 rounded">
+                    <x-mary-icon name="o-information-circle" class="w-4 h-4 inline mr-1" />
+                    {{ __('This rate will be used as the default price. You can override it per invoice.') }}
+                </div>
+
+            </x-mary-card>
+
+            {{-- Mobile Save Button --}}
+            <div class="lg:hidden">
+                <x-mary-button label="{{ __('Save Changes') }}" icon="o-check" class="btn-primary w-full"
+                    wire:click="save" />
             </div>
 
-            {{-- Service Name --}}
-            <div>
-                <flux:input label="{{ __('Service Name') }}" wire:model="name" required
-                    placeholder="{{ __('Eg., Psychotherapy, 60 minutes') }}" />
-                @error('name')
-                    <span class="text-red-500 text-sm">{{ $message }}</span>
-                @enderror
-            </div>
         </div>
-
-        {{-- Rate and Description --}}
-        <div>
-            <flux:textarea label="{{ __('Description (Optional)') }}" wire:model="description" rows="3"
-                placeholder="{{ __('Detailed description of the service and its purpose.') }}" />
-            @error('description')
-                <span class="text-red-500 text-sm">{{ $message }}</span>
-            @enderror
-        </div>
-
-        <h3 class="text-lg font-semibold border-b pb-2 mb-4 pt-4 text-accent-700">
-            {{ __('Pricing and Duration Rules') }}
-        </h3>
-
-        {{-- Standard Rate --}}
-        <div>
-            <flux:input icon="currency-dollar" label="{{ __('Standard Rate') }}" type="number"
-                wire:model="standard_rate" step="0.01" min="0.01" required prefix="$" placeholder="150.00" />
-            @error('standard_rate')
-                <span class="text-red-500 text-sm">{{ $message }}</span>
-            @enderror
-        </div>
-
-        {{-- Duration Eligibility (Optional) --}}
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-            {{-- Minimum Duration --}}
-            <div>
-                <flux:input label="{{ __('Minimum Duration (minutes)') }}" type="number"
-                    wire:model="min_duration_minutes" min="1" placeholder="{{ __('Eg., 53') }}" />
-                <p class="text-xs text-gray-500 mt-1">
-                    {{ __('If applicable, minimum time required to bill this code.') }}</p>
-                @error('min_duration_minutes')
-                    <span class="text-red-500 text-sm">{{ $message }}</span>
-                @enderror
-            </div>
-
-            {{-- Maximum Duration --}}
-            <div>
-                <flux:input label="{{ __('Maximum Duration (minutes)') }}" type="number"
-                    wire:model="max_duration_minutes" min="1" placeholder="{{ __('Eg., 68') }}" />
-                <p class="text-xs text-gray-500 mt-1">
-                    {{ __('If applicable, maximum time allowed to bill this code.') }}
-                </p>
-                @error('max_duration_minutes')
-                    <span class="text-red-500 text-sm">{{ $message }}</span>
-                @enderror
-            </div>
-        </div>
-
-        {{-- Active Status Toggle --}}
-        <div class="pt-4">
-            <flux:checkbox label="{{ __('Is Active?') }}" wire:model="is_active"
-                description="{{ __('If unchecked, this code will not be available for new invoices.') }}" />
-        </div>
-
-        {{-- Submit Button --}}
-        <div class="pt-6">
-            <x-mary-button type="submit"
-                label="{{ !empty($code) ? __('Edit Billing Code') : __('Save Billing Code') }}" icon="o-check-circle"
-                class="btn-primary w-full" spinner="saveCode" />
-        </div>
-    </form>
+    </div>
 </div>

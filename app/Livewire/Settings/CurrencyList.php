@@ -3,49 +3,96 @@
 namespace App\Livewire\Settings;
 
 use App\Models\Currency;
+use Illuminate\Database\Eloquent\Builder;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Mary\Traits\Toast;
 
 class CurrencyList extends Component
 {
-    use WithPagination;
+    use Toast, WithPagination;
 
-    public $search = '';
+    // --- State ---
+    public string $search = '';
 
-    public $currencyIdToDelete;
+    public array $sortBy = ['column' => 'code', 'direction' => 'asc'];
+
+    // --- Delete Confirmation ---
+    public $currencyToDeleteId;
 
     public $showDeleteModal = false;
 
-    public function confirmDelete($currencyId)
+    // --- Headers ---
+    public function headers(): array
     {
-        $this->currencyIdToDelete = $currencyId;
+        return [
+            ['key' => 'code', 'label' => __('Code'), 'class' => 'font-bold w-20'],
+            ['key' => 'currency_name', 'label' => __('Name'), 'class' => 'w-1/3'],
+            ['key' => 'symbol', 'label' => __('Symbol'), 'class' => 'text-center'],
+            ['key' => 'exchange_rate', 'label' => __('Exchange Rate'), 'class' => 'text-right font-mono'],
+            ['key' => 'formatting', 'label' => __('Format'), 'sortable' => false, 'class' => 'hidden md:table-cell'],
+            ['key' => 'actions', 'label' => '', 'sortable' => false],
+        ];
+    }
+
+    // --- Actions ---
+
+    public function sort($column)
+    {
+        if ($this->sortBy['column'] === $column) {
+            $this->sortBy['direction'] = $this->sortBy['direction'] === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->sortBy['column'] = $column;
+            $this->sortBy['direction'] = 'asc';
+        }
+    }
+
+    public function confirmDelete($id)
+    {
+        // Prevent deleting the default system currency
+        if ($id == settings()->default_currency_id) {
+            $this->error(__('Action Denied'), __('You cannot delete the default system currency. Change it in General Settings first.'));
+
+            return;
+        }
+
+        $this->currencyToDeleteId = $id;
         $this->showDeleteModal = true;
     }
 
     public function delete()
     {
-        // Add a check to prevent deleting the currency if it's set as the default
-        // in the Settings table (if applicable).
+        if ($this->currencyToDeleteId) {
+            // Double check before execution
+            if ($this->currencyToDeleteId == settings()->default_currency_id) {
+                $this->error(__('Action Denied'), __('Cannot delete default currency.'));
+                $this->showDeleteModal = false;
 
-        Currency::findOrFail($this->currencyIdToDelete)->delete();
+                return;
+            }
+
+            $currency = Currency::find($this->currencyToDeleteId);
+            $currency?->delete();
+            $this->success(__('Deleted'), __('Currency removed successfully.'));
+        }
 
         $this->showDeleteModal = false;
-        session()->flash('success', 'Currency deleted successfully.');
-        $this->resetPage(); // Reset pagination after deletion
+        $this->currencyToDeleteId = null;
     }
 
     public function render()
     {
-        $query = Currency::query();
-        if ($this->search) {
-            $query->where(function ($q) {
-                $q->where('code', 'like', '%'.$this->search.'%')
-                    ->orWhere('currency_name', 'like', '%'.$this->search.'%');
-            });
-        }
+        $currencies = Currency::query()
+            ->when($this->search, function (Builder $q) {
+                $q->where('code', 'like', "%$this->search%")
+                    ->orWhere('currency_name', 'like', "%$this->search%");
+            })
+            ->orderBy($this->sortBy['column'], $this->sortBy['direction'])
+            ->paginate(10);
 
-        $currencies = $query->paginate(5);
-
-        return view('livewire.currency-list', compact('currencies'));
+        return view('livewire.currency-list', [
+            'currencies' => $currencies,
+            'defaultCurrencyId' => settings()->default_currency_id,
+        ]);
     }
 }

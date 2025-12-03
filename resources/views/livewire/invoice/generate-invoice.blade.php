@@ -1,6 +1,8 @@
 <div>
 
-    <x-page-header :title="__('Generate Invoice')" :subtitle="__('Patient: ' . $patient->first_name . ' ' . $patient->last_name . ' (' . $patient->id . ')')" />
+    <x-page-header :title="__('Generate Invoice')" :subtitle="__('Patient: :name', [
+        'name' => $patient->first_name . ' ' . $patient->last_name . ' (' . $patient->id . ')',
+    ])" />
 
     @if (session()->has('error'))
         <x-alert color="error" title="Error" class="mb-4">
@@ -37,7 +39,16 @@
 
                 {{-- Status --}}
                 <div>
-                    <x-mary-select label="{{ __('Status') }}" :options="[['name' => 'Draft'], ['name' => 'Sent']]" option-value="name"
+                    <x-mary-select label="{{ __('Status') }}" :options="[
+                        [
+                            'id' => 'Draft',
+                            'name' => __('Draft'),
+                        ],
+                        [
+                            'id' => 'Sent',
+                            'name' => __('Sent'),
+                        ],
+                    ]" option-value="name"
                         wire:model.live="status" required>
                         {{-- Others will be set by payments/cancellation --}}
                     </x-mary-select>
@@ -64,7 +75,13 @@
                         <th class="p-2 text-left w-1/9">{{ __('Code') }}</th>
                         <th class="p-2 text-left w-2/7">{{ __('Description') }}</th>
                         <th class="p-2 text-right w-1/12">{{ __('Units') }}</th>
-                        <th class="p-2 text-right w-1/12">{{ __('Rate $') }}</th>
+                        <th class="p-2 text-right w-1/12">
+                            @if (settings()->default_currency_position === 'prefix')
+                                {{ __(':symb Rate', ['symb' => settings()->currency->symbol ?? '$']) }}
+                            @else
+                                {{ __('Rate :symb', ['symb' => settings()->currency->symbol ?? '$']) }}
+                            @endif
+                        </th>
                         <th class="p-2 text-right w-1/12">{{ __('Subtotal') }}</th>
                         <th class="p-2 w-1/12"></th>
                     </tr>
@@ -75,7 +92,8 @@
                             {{-- Billing Code --}}
                             <td class="p-2">
                                 <x-mary-select wire:model.live="lineItems.{{ $index }}.billing_code_id"
-                                    :options="$availableBillingCodes" option-label="code" option-value="id" placeholder="Select Code" />
+                                    :options="$availableBillingCodes" option-label="code" option-value="id"
+                                    placeholder="{{ __('Select Code') }}" />
                             </td>
 
                             {{-- Description (includes session ID if relevant) --}}
