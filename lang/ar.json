@@ -1109,5 +1109,15 @@
     "Please provide a reason for cancelling. This will be recorded in the patient's history.": "يرجى توضيح سبب الإلغاء. سيتم تسجيله في السجل الطبي للمريض.",
     "Duplicate Visit": "زيارة مكررة",
     "This patient already has a scheduled appointment today.": "لدى هذا المريض موعد مجدول اليوم بالفعل.",
-    "Walk-ins": "بدون موعد"
+    "Walk-ins": "بدون موعد",
+    "Invoice :inv updated successfully!": "تم تحديث الفاتورة :inv بنجاح!",
+    "Failed to update invoice: :msg": "فشل تحديث الفاتورة: :msg",
+    "Invoice :inv created and sessions marked as billed!": "تم إنشاء الفاتورة :inv ووسمت الجلسات على أنها مفوترة!",
+    "Failed to create invoice: :msg": "فشل إنشاء الفاتورة: :msg",
+    "Welcome back": "أهلاً بعودتك",
+    "Enter your credentials to access your account": "أدخل بيانات الاعتماد الخاصة بك للوصول إلى حسابك",
+    "Forgot password?": "هل نسيت كلمة المرور؟",
+    "Keep me logged in": "تذكرني",
+    "Or continue with": "أو تابع باستخدام",
+    "Don't have an account?": "ليس لديك حساب؟"
 }

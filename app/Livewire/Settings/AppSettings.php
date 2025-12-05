@@ -172,10 +172,10 @@ class AppSettings extends Component
         $this->validate();
 
         if ($this->logo_upload) {
-            if ($this->site_logo && Storage::disk('public')->exists($this->site_logo)) {
-                Storage::disk('public')->delete($this->site_logo);
+            if ($this->site_logo && Storage::disk(config('app.default_disk'))->exists($this->site_logo)) {
+                Storage::disk(config('app.default_disk'))->delete($this->site_logo);
             }
-            $path = $this->logo_upload->store('logos', 'public');
+            $path = $this->logo_upload->store('logos', config('app.default_disk'));
             $this->site_logo = 'storage/'.$path;
         }
 

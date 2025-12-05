@@ -69,7 +69,7 @@
 
     {{-- 📋 INVOICE TABLE --}}
     <x-mary-card shadow class="bg-base-100">
-        <x-mary-table :headers="$headers" :rows="$invoices" :sort-by="$sortBy" :link="route('invoice.show', ['invoice' => '[id]'])"
+        <x-mary-table container-class="" :headers="$headers" :rows="$invoices" :sort-by="$sortBy" :link="route('invoice.show', ['invoice' => '[id]'])"
             class="cursor-pointer hover:bg-base-50" with-pagination>
 
             {{-- 🧾 Invoice Number --}}

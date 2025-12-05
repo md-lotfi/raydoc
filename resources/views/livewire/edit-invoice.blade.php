@@ -1,5 +1,4 @@
 <div>
-
     <x-page-header :title="__('Edit Invoice :number', ['number' => $invoice->invoice_number])" :subtitle="__(
         'Patient: ' .
             $patient->first_name .
@@ -39,17 +38,17 @@
     <form wire:submit.prevent="updateInvoice" class="space-y-8">
 
         {{-- INVOICE DETAILS --}}
-        <x-mary-card title="{{ __('Invoice Header Details') }}" shadow separator>
+        <x-mary-card title="{!! __('Invoice Header Details') !!}" shadow separator>
             <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
 
                 {{-- Invoice Number (Read-Only) --}}
                 <x-mary-input label="{{ __('Invoice Number') }}" :value="$invoice->invoice_number" readonly icon="o-receipt-percent" />
 
                 {{-- Issued Date --}}
-                <x-mary-input label="{{ __('Issued Date') }}" type="date" wire:model.live="issued_date" required />
+                <x-mary-input label="{!! __('Issued Date') !!}" type="date" wire:model.live="issued_date" required />
 
                 {{-- Due Date --}}
-                <x-mary-input label="{{ __('Due Date') }}" type="date" wire:model.live="due_date" required />
+                <x-mary-input label="{!! __('Due Date') !!}" type="date" wire:model.live="due_date" required />
 
                 {{-- Status --}}
                 <div>
@@ -75,7 +74,13 @@
                         <th class="p-2 text-left w-1/9">{{ __('Code') }}</th>
                         <th class="p-2 text-left w-2/7">{{ __('Description') }}</th>
                         <th class="p-2 text-right w-1/12">{{ __('Units') }}</th>
-                        <th class="p-2 text-right w-1/12">{{ __('Rate $') }}</th>
+                        <th class="p-2 text-right w-1/12">
+                            @if (settings()->default_currency_position === 'prefix')
+                                {{ __(':symb Rate', ['symb' => settings()->currency->symbol ?? '$']) }}
+                            @else
+                                {{ __('Rate :symb', ['symb' => settings()->currency->symbol ?? '$']) }}
+                            @endif
+                        </th>
                         <th class="p-2 text-right w-1/12">{{ __('Subtotal') }}</th>
                         <th class="p-2 w-1/12"></th>
                     </tr>

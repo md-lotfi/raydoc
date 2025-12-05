@@ -1108,5 +1108,15 @@
     "Please provide a reason for cancelling. This will be recorded in the patient's history.": "Veuillez indiquer la raison de l'annulation. Celle-ci sera enregistrée dans le dossier médical du patient.",
     "Duplicate Visit": "Visite en double",
     "This patient already has a scheduled appointment today.": "Ce patient a déjà un rendez-vous programmé aujourd'hui.",
-    "Walk-ins": "Sans rendez-vous"
+    "Walk-ins": "Sans rendez-vous",
+    "Invoice :inv updated successfully!": "Facture :inv mise à jour avec succès !",
+    "Failed to update invoice: :msg": "Échec de la mise à jour de la facture : :msg",
+    "Invoice :inv created and sessions marked as billed!": "Facture :inv créée et les sessions marquées comme facturées !",
+    "Failed to create invoice: :msg": "Échec de la création de la facture : :msg",
+    "Welcome back": "Bienvenue de retour",
+    "Enter your credentials to access your account": "Entrez vos identifiants pour accéder à votre compte",
+    "Forgot password?": "Mot de passe oublié ?",
+    "Keep me logged in": "Garder ma session active",
+    "Or continue with": "Ou continuer avec",
+    "Don't have an account?": "Vous n'avez pas de compte ?"
 }

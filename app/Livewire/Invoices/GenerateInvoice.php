@@ -12,9 +12,12 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
+use Mary\Traits\Toast;
 
 class GenerateInvoice extends Component
 {
+    use Toast;
+
     // --- Invoice Properties ---
     public Patient $patient;
 
@@ -237,13 +240,13 @@ class GenerateInvoice extends Component
             }
 
             DB::commit();
-            session()->flash('success', 'Invoice '.$this->invoice_number.' created and sessions marked as billed!');
+            $this->success(__('Generated'), __('Invoice :inv created and sessions marked as billed!', ['inv' => $this->invoice_number]));
 
             return $this->redirect(route('invoice.show', ['invoice' => $invoice->id]), navigate: true);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            session()->flash('error', 'Failed to create invoice: '.$e->getMessage());
+            $this->error(__('Error'), __('Failed to create invoice: :msg', ['msg' => $e->getMessage()]));
         }
     }
 

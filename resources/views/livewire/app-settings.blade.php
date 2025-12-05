@@ -15,7 +15,7 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
                 {{-- Logo Section --}}
                 <div class="md:col-span-1">
-                    <x-mary-card title="{{ __('Company Logo') }}" class="text-center" shadow>
+                    <x-mary-card title="{!! __('Company Logo') !!}" class="text-center" shadow>
                         <div class="flex justify-center mb-4">
                             @if ($logo_upload)
                                 <img src="{{ $logo_upload->temporaryUrl() }}"
@@ -39,7 +39,7 @@
 
                 {{-- Contact Details --}}
                 <div class="md:col-span-2 space-y-4">
-                    <x-mary-card title="{{ __('Company Information') }}" shadow>
+                    <x-mary-card title="{!! __('Company Information') !!}" shadow>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <x-mary-input label="{{ __('Company Name') }}" wire:model="company_name"
                                 icon="o-building-storefront" />
@@ -65,7 +65,7 @@
                     <div class="space-y-4">
                         <x-mary-input label="{{ __('Tax / VAT Number') }}" wire:model="tax_vat_number"
                             icon="o-receipt-percent" />
-                        <x-mary-input label="{{ __('Company Registration #') }}" wire:model="company_reg_number"
+                        <x-mary-input label="{!! __('Company Registration #') !!}" wire:model="company_reg_number"
                             icon="o-identification" />
                         <x-mary-textarea label="{{ __('Invoice Disclaimer') }}" wire:model="legal_disclaimer"
                             rows="3" />
@@ -111,12 +111,12 @@
                 </x-mary-card>
 
                 {{-- Sender Identity --}}
-                <x-mary-card title="{{ __('Sender Identity') }}"
-                    subtitle="{{ __('How emails appear to recipients.') }}" shadow>
+                <x-mary-card title="{!! __('Sender Identity') !!}" subtitle="{{ __('How emails appear to recipients.') }}"
+                    shadow>
                     <div class="space-y-4">
                         <x-mary-input label="{{ __('From Name') }}" wire:model="mail_from_name" icon="o-user-circle"
                             hint="{{ __('e.g. Raydoc Support') }}" />
-                        <x-mary-input label="{{ __('From Address') }}" wire:model="mail_from_address"
+                        <x-mary-input label="{!! __('From Address') !!}" wire:model="mail_from_address"
                             icon="o-at-symbol" hint="{{ __('e.g. no-reply@raydoc.com') }}" />
 
                         <div class="alert alert-info text-sm mt-4">
@@ -131,7 +131,7 @@
         {{-- 🔔 TAB 4: NOTIFICATIONS --}}
         <x-mary-tab name="notifications" label="{{ __('Notifications') }}" icon="o-bell-alert">
             <div class="mt-6">
-                <x-mary-card title="{{ __('Email Automation Rules') }}" shadow>
+                <x-mary-card title="{!! __('Email Automation Rules') !!}" shadow>
                     <div class="space-y-4">
                         <x-mary-toggle label="{{ __('Notify Patient: Booking Confirmation') }}"
                             wire:model="notify_patient_on_booking" class="toggle-primary" right />
@@ -141,8 +141,8 @@
                         <x-mary-toggle label="{{ __('Notify Doctor: New Appointment Assigned') }}"
                             wire:model="notify_doctor_on_assignment" class="toggle-secondary" right />
                         <div class="divider"></div>
-                        <x-mary-toggle label="{{ __('Notify Admin: Payment Received') }}"
-                            wire:model="notify_admin_on_payment" class="toggle-warning" right />
+                        <x-mary-toggle label="{!! __('Notify Admin: Payment Received') !!}" wire:model="notify_admin_on_payment"
+                            class="toggle-warning" right />
                     </div>
                 </x-mary-card>
             </div>

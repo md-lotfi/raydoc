@@ -20,9 +20,13 @@ class ShowInvoice extends Component
 
     // Payment Modal State
     public $showPaymentModal = false;
+
     public $paymentAmount;
+
     public $paymentMethod;
+
     public $paymentDate;
+
     public $notes;
 
     // Options
@@ -37,7 +41,7 @@ class ShowInvoice extends Component
 
         // Format payment methods for x-mary-select
         $this->paymentMethods = collect(config('constants.PAYMENT_METHODS', ['Cash', 'Credit Card', 'Bank Transfer', 'Insurance']))
-            ->map(fn($m) => ['id' => $m, 'name' => $m]);
+            ->map(fn ($m) => ['id' => $m, 'name' => $m]);
 
         // Defaults
         $this->paymentAmount = $this->invoice->amount_due;
@@ -47,7 +51,7 @@ class ShowInvoice extends Component
     protected function rules()
     {
         return [
-            'paymentAmount' => 'required|numeric|min:0.01|max:' . $this->invoice->amount_due,
+            'paymentAmount' => 'required|numeric|min:0.01|max:'.$this->invoice->amount_due,
             'paymentMethod' => 'required',
             'paymentDate' => 'required|date|before_or_equal:today',
             'notes' => 'nullable|string|max:500',
@@ -66,6 +70,7 @@ class ShowInvoice extends Component
 
     public function recordPayment()
     {
+        Log::debug('validating record payment');
         $this->validate();
 
         try {
@@ -108,11 +113,14 @@ class ShowInvoice extends Component
 
     public function cancelInvoice()
     {
-        if ($this->invoice->status === 'Canceled') return;
+        if ($this->invoice->status === 'Canceled') {
+            return;
+        }
 
         // Prevent cancelling if partial payments exist
         if ($this->invoice->amount_due < $this->invoice->total_amount) {
             $this->error(__('Action Failed'), __('Cannot cancel an invoice that has payments. Refund payments first.'));
+
             return;
         }
 
@@ -120,7 +128,7 @@ class ShowInvoice extends Component
             DB::transaction(function () {
                 // 1. Reset Sessions to Pending
                 $sessionIds = $this->invoice->lineItems->pluck('therapy_session_id')->filter()->toArray();
-                if (!empty($sessionIds)) {
+                if (! empty($sessionIds)) {
                     TherapySession::whereIn('id', $sessionIds)->update(['billing_status' => 'Pending']);
                 }
 

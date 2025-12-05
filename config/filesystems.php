@@ -47,6 +47,14 @@ return [
             'report' => false,
         ],
 
+        'dev_public' => [
+            'driver' => 'local',
+            // Use the base_path() to force the root to your project's storage directory
+            'root' => base_path('storage/app/public'),
+            'url' => env('APP_URL').'/storage',
+            'visibility' => 'public',
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

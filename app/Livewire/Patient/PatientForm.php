@@ -4,6 +4,8 @@ namespace App\Livewire\Patient;
 
 use App\Models\Patient;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
@@ -81,44 +83,57 @@ class PatientForm extends Component
     public function save()
     {
         $this->validate();
+        DB::beginTransaction();
+        try {
+            $data = [
+                'first_name' => $this->first_name,
+                'last_name' => $this->last_name,
+                'email' => $this->email,
+                'date_of_birth' => $this->date_of_birth,
+                'gender' => $this->gender,
+                'phone_number' => $this->phone_number,
+                'address' => $this->address,
+                'city' => $this->city,
+                'is_active' => $this->is_active,
+                'user_id' => Auth::id(), // Always track who touched it last
+            ];
 
-        $data = [
-            'first_name' => $this->first_name,
-            'last_name' => $this->last_name,
-            'email' => $this->email,
-            'date_of_birth' => $this->date_of_birth,
-            'gender' => $this->gender,
-            'phone_number' => $this->phone_number,
-            'address' => $this->address,
-            'city' => $this->city,
-            'is_active' => $this->is_active,
-            'user_id' => Auth::id(), // Always track who touched it last
-        ];
+            // 1. Handle Avatar Upload
+            if ($this->avatar) {
+                // Delete old avatar if updating
 
-        // 1. Handle Avatar Upload
-        if ($this->avatar) {
-            // Delete old avatar if updating
-            if ($this->patient && $this->patient->avatar) {
-                Storage::disk('public')->delete(str_replace('/storage/', '', $this->patient->avatar));
+                Log::debug('removing old avatar image '.$this->patient->avatar);
+                if ($this->patient && $this->patient->avatar) {
+                    Storage::disk(config('app.default_disk'))->delete(str_replace('/storage/', '', $this->patient->avatar)); // public
+                }
+
+                $path = $this->avatar->store('avatars', config('app.default_disk'));
+
+                Log::debug('storing avatar image to local '.$path);
+                $data['avatar'] = Storage::url($path);
             }
 
-            $path = $this->avatar->store('avatars', 'public');
-            $data['avatar'] = Storage::url($path);
+            // 2. Create or Update
+            if ($this->patient) {
+                $this->patient->update($data);
+                $message = __('Patient profile updated successfully.');
+            } else {
+                $this->patient = Patient::create($data);
+                $message = __('New patient registered successfully.');
+            }
+
+            DB::commit();
+            $this->success(__('Success'), $message);
+
+            // 3. Redirect to List (or Detail view)
+            return redirect()->route('patient.list');
+        } catch (\Throwable $th) {
+            Log::debug('save patient form error: '.$th->getMessage());
+            DB::rollBack();
+            $this->error(_('Error'), $th->getMessage());
+
+            // return redirect()->route('patient.list');
         }
-
-        // 2. Create or Update
-        if ($this->patient) {
-            $this->patient->update($data);
-            $message = __('Patient profile updated successfully.');
-        } else {
-            $this->patient = Patient::create($data);
-            $message = __('New patient registered successfully.');
-        }
-
-        $this->success(__('Success'), $message);
-
-        // 3. Redirect to List (or Detail view)
-        return redirect()->route('patient.list');
     }
 
     public function cancel()

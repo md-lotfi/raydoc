@@ -1,5 +1,6 @@
 <?php
 
+use App\Livewire\Activation\ActivateApp;
 use App\Livewire\Assistant\AssistantForm;
 use App\Livewire\Assistant\AssistantsList;
 use App\Livewire\Billing\BillingCodesForm;
@@ -32,9 +33,15 @@ use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
 use Livewire\Volt\Volt;
 
-Route::get('/', function () {
+/*Route::get('/', function () {
     return view('welcome');
-})->name('home');
+})->name('home');*/
+
+Route::get('activate', ActivateApp::class)->name('activation.form');
+
+Route::get('/', function () {
+    return redirect()->route('dashboard');
+})->middleware(['auth', 'verified'])->name('home');
 
 Route::get('lang/{locale}', function ($locale) {
     if (in_array($locale, ['en', 'fr', 'ar'])) {

@@ -5,10 +5,11 @@
         subtitle="{{ __('Issued to') }} {{ $invoice->patient->first_name }} {{ $invoice->patient->last_name }}"
         separator>
         <x-slot:actions>
-            <x-mary-button label="{{ __('Back') }}" icon="o-arrow-left" class="btn-ghost"
+            <x-mary-button label="{{ __('Back') }}" icon="o-arrow-left" class="btn-ghost print:hidden"
                 link="{{ route('invoice.list') }}" />
             {{-- Print Trigger --}}
-            <x-mary-button label="{{ __('Print / PDF') }}" icon="o-printer" class="btn-outline" onclick="window.print()" />
+            <x-mary-button label="{{ __('Print / PDF') }}" icon="o-printer" class="btn-outline print:hidden"
+                onclick="window.print()" />
         </x-slot:actions>
     </x-page-header>
 
@@ -124,7 +125,7 @@
                         </div>
                         <div class="flex justify-between text-success">
                             <span>{{ __('Amount Paid') }}</span>
-                            <span>- {{ format_currency($invoice->total_amount - $invoice->amount_due) }}</span>
+                            <span>{{ format_currency($invoice->total_amount - $invoice->amount_due) }}</span>
                         </div>
                         <div
                             class="flex justify-between border-t border-gray-200 pt-3 text-xl font-black text-gray-800">
@@ -165,7 +166,7 @@
                         <x-mary-button label="{{ __('Record Payment') }}" icon="o-credit-card"
                             class="btn-success w-full text-white shadow-md"
                             wire:click="$set('showPaymentModal', true)" />
-                        <x-mary-button label="{{ __('Resend Email') }}" icon="o-envelope" class="btn-outline w-full" />
+                        <x-mary-button label="{!! __('Resend Email') !!}" icon="o-envelope" class="btn-outline w-full" />
                         <x-mary-button label="{{ __('Cancel Invoice') }}" icon="o-x-circle"
                             class="btn-ghost text-error w-full" wire:click="cancelInvoice"
                             confirm="{{ __('Are you sure? This will reset all items.') }}" />
@@ -220,26 +221,31 @@
             <span class="text-xl font-bold text-error">{{ format_currency($invoice->amount_due) }}</span>
         </div>
 
-        <form wire:submit.prevent="recordPayment" class="space-y-4">
+        {{-- ❌ REMOVED <form> wrapper to avoid scope issues with slot actions --}}
+
+        <div class="space-y-4" onkeydown="return event.key != 'Enter';"> {{-- Prevent accidental submit on Enter if needed --}}
 
             <div class="grid grid-cols-2 gap-4">
-                <x-mary-input label="{{ __('Amount') }}" prefix="$" wire:model="paymentAmount" type="number"
-                    step="0.01" class="font-bold text-lg" />
+                <x-mary-input label="{!! __('Amount') !!}" prefix="$" wire:model="paymentAmount"
+                    type="number" step="0.01" class="font-bold text-lg" />
                 <x-mary-input label="{{ __('Date') }}" wire:model="paymentDate" type="date" />
             </div>
 
             <x-mary-select label="{{ __('Payment Method') }}" :options="$paymentMethods" wire:model="paymentMethod"
                 icon="o-credit-card" placeholder="{{ __('Select...') }}" />
 
-            <x-mary-textarea label="{{ __('Notes') }}" wire:model="notes"
-                placeholder="{{ __('Transaction ID, Check Number, etc.') }}" rows="2" />
+            <x-mary-textarea label="{{ __('Notes') }}" wire:model="notes" placeholder="{!! __('Transaction ID, Check Number, etc.') !!}"
+                rows="2" />
 
-            <x-slot:actions>
-                <x-mary-button label="{{ __('Cancel') }}" @click="$wire.showPaymentModal = false" />
-                <x-mary-button label="{{ __('Confirm Payment') }}" class="btn-primary" type="submit"
-                    spinner="recordPayment" />
-            </x-slot:actions>
-        </form>
+        </div>
+
+        <x-slot:actions>
+            <x-mary-button label="{{ __('Cancel') }}" @click="$wire.showPaymentModal = false" />
+
+            {{-- ✅ DIRECT WIRE:CLICK --}}
+            <x-mary-button label="{{ __('Confirm Payment') }}" class="btn-primary" wire:click="recordPayment"
+                spinner="recordPayment" />
+        </x-slot:actions>
     </x-mary-modal>
 
 </div>

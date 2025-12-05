@@ -15,18 +15,23 @@ class CurrencyForm extends Component
 
     // Form Properties
     public string $currency_name = '';
+
     public string $code = '';
+
     public string $symbol = '';
+
     public string $thousand_separator = ',';
+
     public string $decimal_separator = '.';
+
     public $exchange_rate = 1.0000;
 
-    public function mount($currency = null)
+    public function mount(?Currency $currency = null)
     {
         if ($currency) {
             // 🟦 EDIT MODE
-            $this->currency = Currency::findOrFail($currency);
-            
+            $this->currency = $currency;
+
             $this->currency_name = $this->currency->currency_name;
             $this->code = $this->currency->code;
             $this->symbol = $this->currency->symbol;

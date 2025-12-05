@@ -1,0 +1,84 @@
+version: '3.8'
+
+services:
+  # 🟢 PHP Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: raydoc-app
+    container_name: raydoc_app
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - ./storage:/var/www/storage # Persist logs/uploads
+    environment:
+      APP_ENV: production
+      APP_DEBUG: false
+      APP_KEY: ${APP_KEY}
+      APP_URL: ${APP_URL}
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_DATABASE}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      CACHE_DRIVER: redis
+      SESSION_DRIVER: redis
+      QUEUE_CONNECTION: redis
+      REDIS_HOST: redis
+    depends_on:
+      - db
+      - redis
+
+  # 🌐 Web Server (Nginx)
+  web:
+    image: nginx:alpine
+    container_name: raydoc_web
+    restart: unless-stopped
+    ports:
+      - "8000:80" # Access via http://localhost:8000
+    volumes:
+      - ./public:/var/www/public # Serve static files
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d
+    depends_on:
+      - app
+
+  # 🗄️ Database
+  db:
+    image: mysql:8.3
+    container_name: raydoc_db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-p${DB_PASSWORD}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ⚡ Cache & Queues
+  redis:
+    image: redis:alpine
+    container_name: raydoc_redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+  # 👷 Queue Worker (Optional: Handles Emails/Jobs)
+  #queue:
+  #  image: raydoc-app
+  #  container_name: raydoc_worker
+  #  restart: unless-stopped
+  #  command: "php artisan queue:work --tries=3"
+  #  depends_on:
+  #    - app
+  #    - redis
+
+volumes:
+  db_data:
+  redis_data:

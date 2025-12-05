@@ -28,7 +28,7 @@
     <form wire:submit.prevent="saveInvoice" class="space-y-8">
 
         {{-- INVOICE DETAILS --}}
-        <x-mary-card title="{{ __('Invoice Header Details') }}" shadow separator>
+        <x-mary-card title="{!! __('Invoice Header Details') !!}" shadow separator>
             <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
 
                 {{-- Issued Date --}}

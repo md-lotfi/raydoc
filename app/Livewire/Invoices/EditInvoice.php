@@ -10,9 +10,12 @@ use App\Models\TherapySession;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Livewire\Component;
+use Mary\Traits\Toast;
 
 class EditInvoice extends Component
 {
+    use Toast;
+
     // --- Invoice Properties ---
     public Invoice $invoice; // The main invoice model being edited
 
@@ -246,12 +249,12 @@ class EditInvoice extends Component
                 }
             });
 
-            session()->flash('success', 'Invoice '.$this->invoice->invoice_number.' updated successfully!');
+            $this->success(__('Updated'), __('Invoice :inv updated successfully!', ['inv' => $this->invoice->invoice_number]));
 
             return $this->redirect(route('invoice.show', $this->invoice->id), navigate: true);
 
         } catch (\Exception $e) {
-            session()->flash('error', 'Failed to update invoice: '.$e->getMessage());
+            $this->error(__('Error'), __('Failed to update invoice: :msg', ['msg' => $e->getMessage()]));
         }
     }
 

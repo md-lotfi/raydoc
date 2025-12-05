@@ -112,8 +112,13 @@
             @role('super-admin')
                 <flux:sidebar.group heading="{{ __('System') }}">
                     <flux:sidebar.item icon="cog-6-tooth" href="{{ route('settings.app.edit') }}"
-                        :current="request()->routeIs('settings.*')">{{ __('Settings') }}</flux:sidebar.item>
-                    <flux:sidebar.item icon="currency-dollar" href="{{ route('settings.currency.list') }}">
+                        :current="request()->routeIs('settings.*')
+                                                                        && !request()->routeIs('settings.currency.list')
+                                                                        && !request()->routeIs('settings.currency.edit')
+                                                                        && !request()->routeIs('settings.currency.create')">
+                        {{ __('Settings') }}</flux:sidebar.item>
+                    <flux:sidebar.item icon="currency-dollar" href="{{ route('settings.currency.list') }}"
+                        :current="request()->routeIs('settings.currency.*')">
                         {{ __('Currencies') }}
                     </flux:sidebar.item>
                 </flux:sidebar.group>

@@ -25,7 +25,7 @@
 
     {{-- 📋 TABLE --}}
     <x-mary-card shadow class="bg-base-100">
-        <x-mary-table :headers="$this->headers()" :rows="$currencies" :sort-by="$sortBy" :link="route('settings.currency.edit', ['currency' => '[id]'])"
+        <x-mary-table container-class="" :headers="$this->headers()" :rows="$currencies" :sort-by="$sortBy" :link="route('settings.currency.edit', ['currency' => '[id]'])"
             class="cursor-pointer hover:bg-base-50" with-pagination>
 
             {{-- 🏷️ Code --}}

@@ -23,6 +23,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        ini_set('upload_max_filesize', '100M');
+        ini_set('post_max_size', '100M');
+        ini_set('memory_limit', '256M');
         Gate::before(function ($user, $ability) {
             return $user->hasRole(config('constants.ROLES.ADMIN')) ? true : null;
         });

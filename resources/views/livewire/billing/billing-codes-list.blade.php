@@ -43,7 +43,7 @@
 
     {{-- 📋 CODES TABLE --}}
     <x-mary-card shadow class="bg-base-100">
-        <x-mary-table :headers="$this->headers()" :rows="$billingCodes" :sort-by="$sortBy" :link="route('billing.codes.edit', ['billingCode' => '[id]'])"
+        <x-mary-table container-class="" :headers="$this->headers()" :rows="$billingCodes" :sort-by="$sortBy" :link="route('billing.codes.edit', ['billingCode' => '[id]'])"
             class="cursor-pointer hover:bg-base-50" with-pagination>
 
             {{-- 🏷️ Code --}}

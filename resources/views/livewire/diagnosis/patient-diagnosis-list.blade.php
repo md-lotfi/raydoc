@@ -56,7 +56,7 @@
 
     {{-- 📋 DIAGNOSIS TABLE --}}
     <x-mary-card shadow class="bg-base-100">
-        <x-mary-table :headers="$this->headers()" :rows="$this->diagnoses" :sort-by="$sortBy" :link="route('patient.diagnosis.detail', ['diagnosis' => '[id]'])"
+        <x-mary-table container-class="" :headers="$this->headers()" :rows="$this->diagnoses" :sort-by="$sortBy" :link="route('patient.diagnosis.detail', ['diagnosis' => '[id]'])"
             class="cursor-pointer hover:bg-base-50" with-pagination>
 
             {{-- 🏷️ ICD Code --}}

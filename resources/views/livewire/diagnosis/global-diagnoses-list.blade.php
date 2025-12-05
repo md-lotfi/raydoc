@@ -47,8 +47,8 @@
 
     {{-- 📋 DIAGNOSES TABLE --}}
     <x-mary-card shadow class="bg-base-100">
-        <x-mary-table :headers="$this->headers()" :rows="$diagnoses" :sort-by="$sortBy" {{-- ✅ LINK FIX: No $event needed here. [id] is automatically replaced by MaryUI --}} :link="route('patient.diagnosis.detail', ['diagnosis' => '[id]'])"
-            class="cursor-pointer hover:bg-base-50" with-pagination>
+        <x-mary-table container-class="" :headers="$this->headers()" :rows="$diagnoses" :sort-by="$sortBy" {{-- ✅ LINK FIX: No $event needed here. [id] is automatically replaced by MaryUI --}}
+            :link="route('patient.diagnosis.detail', ['diagnosis' => '[id]'])" class="cursor-pointer hover:bg-base-50" with-pagination>
 
             {{-- 🏷️ ICD Code --}}
             @scope('cell_icdCode.code', $diagnosis)
