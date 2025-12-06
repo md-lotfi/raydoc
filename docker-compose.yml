@@ -44,6 +44,7 @@ services:
       - ./public:/var/www/public # Serve static files
       - build_assets:/var/www/public/build
       - ./docker/nginx/conf.d:/etc/nginx/conf.d
+      - ./storage:/var/www/storage
     depends_on:
       - app
 
