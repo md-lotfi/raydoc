@@ -22,29 +22,17 @@
 <script>
     (function() {
         function syncDaisyUI() {
-            const stored = localStorage.getItem('theme');
-            const system = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            const isDark = stored === 'dark' || (!stored && system);
-            const themeValue = isDark ? 'dark' : 'light';
-
-            // 1. Update DOM
-            if (isDark) {
-                document.documentElement.classList.add('dark');
-                document.documentElement.setAttribute('data-theme', 'dark');
-            } else {
-                document.documentElement.classList.remove('dark');
-                document.documentElement.setAttribute('data-theme', 'light');
-            }
-
-            // 2. ✅ NEW: Update Cookie (Valid for 1 year)
-            document.cookie = `theme=${themeValue}; path=/; max-age=31536000`;
+            const isDark = document.documentElement.classList.contains('dark');
+            document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
         }
 
-        // Run immediately and on navigation
+        // 1. Run immediately
         syncDaisyUI();
+
+        // 2. Run after navigation
         document.addEventListener('livewire:navigated', syncDaisyUI);
 
-        // Watch for changes
+        // 3. Watch for class changes (e.g. Toggle button click)
         const observer = new MutationObserver(syncDaisyUI);
         observer.observe(document.documentElement, {
             attributes: true,
