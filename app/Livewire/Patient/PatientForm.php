@@ -134,6 +134,7 @@ class PatientForm extends Component
             return redirect()->route('patient.list');
         } catch (\Throwable $th) {
             Log::debug('save patient form error: '.$th->getMessage());
+            Log::debug('save patient form statck trace: '.$th->getTraceAsString());
             DB::rollBack();
             $this->error(_('Error'), $th->getMessage());
 
