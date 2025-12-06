@@ -45,6 +45,11 @@ class PatientForm extends Component
     // Options
     public $genderOptions;
 
+    public function toJSON()
+    {
+        return [];
+    }
+
     public function mount($id = null)
     {
         $this->genderOptions = collect(config('constants.GENDERS'))->map(fn ($g) => ['id' => $g, 'name' => $g]);
