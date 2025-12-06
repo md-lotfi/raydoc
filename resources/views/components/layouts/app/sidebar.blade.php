@@ -1,5 +1,7 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}"
+    class="{{ request()->cookie('theme') === 'dark' ? 'dark' : '' }}"
+    data-theme="{{ request()->cookie('theme') === 'dark' ? 'dark' : 'light' }}">
 
 <head>
     @include('partials.head')
@@ -99,9 +101,9 @@
                 <flux:sidebar.group heading="{{ __('System') }}">
                     <flux:sidebar.item icon="cog-6-tooth" href="{{ route('settings.app.edit') }}"
                         :current="request()->routeIs('settings.*')
-                                                                                                                        && !request()->routeIs('settings.currency.list')
-                                                                                                                        && !request()->routeIs('settings.currency.edit')
-                                                                                                                        && !request()->routeIs('settings.currency.create')">
+                                                                                                                                                && !request()->routeIs('settings.currency.list')
+                                                                                                                                                && !request()->routeIs('settings.currency.edit')
+                                                                                                                                                && !request()->routeIs('settings.currency.create')">
                         {{ __('Settings') }}</flux:sidebar.item>
                     <flux:sidebar.item icon="currency-dollar" href="{{ route('settings.currency.list') }}"
                         :current="request()->routeIs('settings.currency.*')">
