@@ -106,8 +106,6 @@ class PatientForm extends Component
             // 1. Handle Avatar Upload
             if ($this->avatar) {
                 // Delete old avatar if updating
-
-                Log::debug('removing old avatar image '.$this->patient->avatar);
                 if ($this->patient && $this->patient->avatar) {
                     Storage::disk(config('app.default_disk'))->delete(str_replace('/storage/', '', $this->patient->avatar)); // public
                 }
@@ -136,7 +134,7 @@ class PatientForm extends Component
             Log::debug('save patient form error: '.$th->getMessage());
             Log::debug('save patient form statck trace: '.$th->getTraceAsString());
             DB::rollBack();
-            $this->error(_('Error'), $th->getMessage());
+            $this->error(__('Error'), $th->getMessage());
 
             // return redirect()->route('patient.list');
         }
