@@ -17,3 +17,26 @@
 
 @vite(['resources/css/app.css', 'resources/js/app.js'])
 @fluxAppearance
+
+{{-- 🔄 AUTO-SYNC SCRIPT: Centralized here --}}
+<script>
+    (function() {
+        function syncDaisyUI() {
+            const isDark = document.documentElement.classList.contains('dark');
+            document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+        }
+
+        // 1. Run immediately
+        syncDaisyUI();
+
+        // 2. Run after navigation
+        document.addEventListener('livewire:navigated', syncDaisyUI);
+
+        // 3. Watch for class changes (e.g. Toggle button click)
+        const observer = new MutationObserver(syncDaisyUI);
+        observer.observe(document.documentElement, {
+            attributes: true,
+            attributeFilter: ['class']
+        });
+    })();
+</script>

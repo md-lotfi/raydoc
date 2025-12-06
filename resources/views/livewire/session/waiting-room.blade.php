@@ -1,5 +1,5 @@
 <div class="space-y-6">
-    <x-page-header title="{{ __('Waiting Room') }}" subtitle="{{ __('Patient Flow & Status Management') }}" separator>
+    <x-page-header title="{!! __('Waiting Room') !!}" subtitle="{{ __('Patient Flow & Status Management') }}" separator>
         <x-slot:actions>
             <x-mary-button label="{{ __('Call Next Patient') }}" icon="o-megaphone" class="btn-primary"
                 wire:click="callNextPatient" spinner="callNextPatient" />

@@ -36,7 +36,7 @@
             </div>
 
             {{-- 🔄 Reset to Today (Separate Quick Action) --}}
-            <x-mary-button label="{{ __('Today') }}" wire:click="today" class="btn-sm btn-outline ml-2"
+            <x-mary-button label="{!! __('Today') !!}" wire:click="today" class="btn-sm btn-outline ml-2"
                 icon="o-calendar-days" />
 
             {{-- New Session Button --}}

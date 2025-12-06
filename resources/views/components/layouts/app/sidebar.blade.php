@@ -4,21 +4,7 @@
 <head>
     @include('partials.head')
     @fluxAppearance
-    <script>
-        (function() {
-            function syncDaisyUI() {
-                const isDark = document.documentElement.classList.contains('dark');
-                document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
-            }
-            syncDaisyUI();
-            document.addEventListener('livewire:navigated', syncDaisyUI);
-            const observer = new MutationObserver(syncDaisyUI);
-            observer.observe(document.documentElement, {
-                attributes: true,
-                attributeFilter: ['class']
-            });
-        })();
-    </script>
+
 </head>
 
 <body class="min-h-screen bg-white dark:bg-zinc-800">
@@ -113,9 +99,9 @@
                 <flux:sidebar.group heading="{{ __('System') }}">
                     <flux:sidebar.item icon="cog-6-tooth" href="{{ route('settings.app.edit') }}"
                         :current="request()->routeIs('settings.*')
-                                                                        && !request()->routeIs('settings.currency.list')
-                                                                        && !request()->routeIs('settings.currency.edit')
-                                                                        && !request()->routeIs('settings.currency.create')">
+                                                                                                                        && !request()->routeIs('settings.currency.list')
+                                                                                                                        && !request()->routeIs('settings.currency.edit')
+                                                                                                                        && !request()->routeIs('settings.currency.create')">
                         {{ __('Settings') }}</flux:sidebar.item>
                     <flux:sidebar.item icon="currency-dollar" href="{{ route('settings.currency.list') }}"
                         :current="request()->routeIs('settings.currency.*')">
