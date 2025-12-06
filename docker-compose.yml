@@ -42,7 +42,7 @@ services:
       - "8000:80" # Access via http://localhost:8000
     volumes:
       - ./public:/var/www/public # Serve static files
-      - build_assets:/var/www/public/build
+      - public_data:/var/www/public
       - ./docker/nginx/conf.d:/etc/nginx/conf.d
       - ./storage:/var/www/storage
     depends_on:
@@ -87,3 +87,4 @@ volumes:
   db_data:
   redis_data:
   build_assets:
+  public_data:
