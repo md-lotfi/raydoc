@@ -13,6 +13,7 @@ services:
     volumes:
       - ./storage:/var/www/storage # Persist logs/uploads
       - ./.env:/var/www/.env
+      - ./public:/var/www/public
       - build_assets:/var/www/public/build
     environment:
       APP_ENV: production
@@ -42,7 +43,7 @@ services:
       - "8000:80" # Access via http://localhost:8000
     volumes:
       - ./public:/var/www/public # Serve static files
-      - public_data:/var/www/public
+      - build_assets:/var/www/public/build
       - ./docker/nginx/conf.d:/etc/nginx/conf.d
       - ./storage:/var/www/storage
     depends_on:
