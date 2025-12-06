@@ -33,15 +33,15 @@ use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
 use Livewire\Volt\Volt;
 
-/*Route::get('/', function () {
+Route::get('/', function () {
     return view('welcome');
-})->name('home');*/
+})->name('home');
 
 Route::get('activate', ActivateApp::class)->name('activation.form');
 
-Route::get('/', function () {
+/*Route::get('/', function () {
     return redirect()->route('dashboard');
-})->middleware(['auth', 'verified'])->name('home');
+})->middleware(['auth', 'verified'])->name('home');*/
 
 Route::get('lang/{locale}', function ($locale) {
     if (in_array($locale, ['en', 'fr', 'ar'])) {
