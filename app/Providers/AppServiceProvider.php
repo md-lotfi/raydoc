@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -26,6 +27,9 @@ class AppServiceProvider extends ServiceProvider
         ini_set('upload_max_filesize', '100M');
         ini_set('post_max_size', '100M');
         ini_set('memory_limit', '256M');
+        if ($this->app->environment('production') || config('app.url') !== 'http://localhost') {
+            URL::forceScheme('https');
+        }
         Gate::before(function ($user, $ability) {
             return $user->hasRole(config('constants.ROLES.ADMIN')) ? true : null;
         });
