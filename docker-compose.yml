@@ -12,6 +12,8 @@ services:
     working_dir: /var/www
     volumes:
       - ./storage:/var/www/storage # Persist logs/uploads
+      - ./.env:/var/www/.env
+      - build_assets:/var/www/public/build
     environment:
       APP_ENV: production
       APP_DEBUG: false
@@ -40,6 +42,7 @@ services:
       - "8000:80" # Access via http://localhost:8000
     volumes:
       - ./public:/var/www/public # Serve static files
+      - build_assets:/var/www/public/build
       - ./docker/nginx/conf.d:/etc/nginx/conf.d
     depends_on:
       - app
@@ -82,3 +85,4 @@ services:
 volumes:
   db_data:
   redis_data:
+  build_assets:
