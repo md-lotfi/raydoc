@@ -19,6 +19,7 @@
         "livewire/volt": "^1.10",
         "nativephp/electron": "^1.3",
         "owenvoke/blade-fontawesome": "^2.9",
+        "predis/predis": "^3.3",
         "robsontenorio/mary": "^2.4",
         "spatie/laravel-permission": "^6.23"
     },
